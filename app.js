@@ -1141,35 +1141,57 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   }
   updateDailyTile();
 });
-// === PANEL DE CONTROL INTERNO (fix: esperar al DOM y checks) ===
-document.addEventListener('DOMContentLoaded', () => {
-  const devPanel = document.getElementById('devControl');
-  const btnDevToggle = document.getElementById('btnDevToggle');
-  const btnCloseControl = document.getElementById('btnCloseControl');
+// === PANEL DE CONTROL INTERNO (init robusto) ===
+(function initDevPanel(){
+  function setup(){
+    const devPanel = document.getElementById('devControl');
+    const btnDevToggle = document.getElementById('btnDevToggle');
+    const btnCloseControl = document.getElementById('btnCloseControl');
 
-  if (!devPanel || !btnDevToggle) return; // si no existen, salimos sin error
+    if (!devPanel || !btnDevToggle) return; // si no existen, no hacemos nada
 
-  const checkboxes = devPanel.querySelectorAll('input[type="checkbox"]');
+    const checkboxes = devPanel.querySelectorAll('input[type="checkbox"]');
+    const savedProgress = JSON.parse(localStorage.getItem('devProgress') || '{}');
 
-  // Cargar estado guardado
-  const savedProgress = JSON.parse(localStorage.getItem('devProgress') || '{}');
-  checkboxes.forEach(chk => { chk.checked = !!savedProgress[chk.id]; });
+    // Estado inicial de checks
+    checkboxes.forEach(chk => { chk.checked = !!savedProgress[chk.id]; });
 
-  btnDevToggle.addEventListener('click', () => {
-    devPanel.classList.toggle('hidden');
-  });
+    // Toggle panel
+    btnDevToggle.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      devPanel.classList.toggle('hidden');
+    });
 
-  if (btnCloseControl) {
-    btnCloseControl.addEventListener('click', () => {
-      devPanel.classList.add('hidden');
+    // Cerrar panel
+    if (btnCloseControl) {
+      btnCloseControl.addEventListener('click', (e) => {
+        e.preventDefault();
+        devPanel.classList.add('hidden');
+      });
+    }
+
+    // Guardar cambios
+    checkboxes.forEach(chk => {
+      chk.addEventListener('change', () => {
+        savedProgress[chk.id] = chk.checked;
+        localStorage.setItem('devProgress', JSON.stringify(savedProgress));
+      });
+    });
+
+    // También cerramos si se hace click fuera del panel (opcional)
+    document.addEventListener('click', (ev) => {
+      if (!devPanel.classList.contains('hidden')) {
+        const inside = devPanel.contains(ev.target) || btnDevToggle.contains(ev.target);
+        if (!inside) devPanel.classList.add('hidden');
+      }
     });
   }
 
-  // Guardar progreso
-  checkboxes.forEach(chk => {
-    chk.addEventListener('change', () => {
-      savedProgress[chk.id] = chk.checked;
-      localStorage.setItem('devProgress', JSON.stringify(savedProgress));
-    });
-  });
-});
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setup, { once: true });
+  } else {
+    // Si el DOM ya cargó, inicializamos ahora mismo
+    setup();
+  }
+})();
