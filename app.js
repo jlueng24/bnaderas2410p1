@@ -1295,3 +1295,22 @@ function openAchievementDrawer(id){
   // document.getElementById('achievementsSection').classList.remove('hidden');
   // renderAchievements();
 })();
+/* ===== HOTFIX LOGROS: compat modal viejo ↔ vitrina nueva ===== */
+(function achievementsBridge(){
+  try {
+    // Si la función de pintado aún no existe, crea un NO-OP para no romper.
+    if (typeof window.renderAchievements !== 'function') {
+      window.renderAchievements = function(){};
+    }
+
+    const achModal   = document.getElementById('achModal');                 // puede no existir (lo quitaste del index)
+    const achSection = document.getElementById('achievementsSection');      // NUEVA vitrina
+    const btnAch     = document.getElementById('btnAchievements');
+    const btnCloseDrawer = document.getElementById('closeAchievementDrawer');
+
+    // Click del botón "🏅 Logros"
+    if (btnAch) {
+      // Quitamos posibles listeners previos problemáticos
+      btnAch.replaceWith(btnAch.cloneNode(true));
+      const fresh
+
