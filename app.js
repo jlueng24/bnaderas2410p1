@@ -1,17 +1,11 @@
-// app.js
-/*
-  Diversión con el mundo — Quiz (v8)
-  Novedades clave:
-  - Álbum estilo Pokédex: cromos con flip (delante/detrás), brillo “foil” en desbloqueados, hits y estado parcial/completo.
-  - Progreso por región + estantería de insignias por región.
-  - Botón y modal de Logros separado (vitrina), además de los logros del final de partida.
-  - Mantiene desbloqueo por tipo (bandera/capital), liga, stats, reto del día, etc.
-*/
+// app.js — Diversión con el mundo (build estable)
+// Funciones principales del juego + fixes de compatibilidad vitrina de logros
 
-const $ = s => document.querySelector(s);
+/* ========= Utilidades ========= */
+const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const randomInt = n => Math.floor(Math.random() * n);
-function shuffle(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]] } return arr; }
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
 const todayStr = () => new Date().toISOString().slice(0,10);
 
 function isoWeekStringLocal(d=new Date()){
@@ -20,16 +14,17 @@ function isoWeekStringLocal(d=new Date()){
   date.setDate(date.getDate() + 4 - dayNum);
   const yearStart = new Date(date.getFullYear(), 0, 1);
   const weekNo = Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
-  const y = date.getFullYear();
-  return `${y}-W${String(weekNo).padStart(2,'0')}`;
+  return `${date.getFullYear()}-W${String(weekNo).padStart(2,'0')}`;
 }
-function flagUrl(code){ return `https://flagcdn.com/w320/${code}.png`; }
-function regionBadge(r){ return r||'Other'; }
 
+function flagUrl(code){ return `https://flagcdn.com/w320/${code}.png`; }
+function regionBadge(r){ return r || 'Other'; }
+
+/* ========= Config ========= */
 const LEVELS = {
-  kids:   { label: "Niños",  time: 15, wrongPenalty: 0 },
-  adult:  { label: "Adultos", time: 12, wrongPenalty: 0 },
-  master: { label: "Máster", time: 8,  wrongPenalty: -5 },
+  kids:   { label: 'Niños',   time: 15, wrongPenalty: 0 },
+  adult:  { label: 'Adultos', time: 12, wrongPenalty: 0 },
+  master: { label: 'Máster',  time:  8, wrongPenalty: -5 },
 };
 const MAX_Q = 10;
 
@@ -37,7 +32,7 @@ const MAX_Q = 10;
 const SURVIVAL_START = 20;
 const SURVIVAL_BONUS = 2;
 
-// ===== Capitales ES (map) =====
+/* ========= Capitales ES (map) ========= */
 const CAPITAL_ES = {
   "Amsterdam":"Ámsterdam","Athens":"Atenas","Berlin":"Berlín","Berne":"Berna","Bern":"Berna","Brussels":"Bruselas","Bucharest":"Bucarest","Budapest":"Budapest","Chisinau":"Chisináu","Copenhagen":"Copenhague","Dublin":"Dublín","Helsinki":"Helsinki","Kyiv":"Kiev","Kiev":"Kiev","Lisbon":"Lisboa","Ljubljana":"Liubliana","London":"Londres","Luxembourg":"Luxemburgo","Madrid":"Madrid","Minsk":"Minsk","Monaco":"Mónaco","Moscow":"Moscú","Nicosia":"Nicosia","Oslo":"Oslo","Paris":"París","Podgorica":"Podgorica","Prague":"Praga","Reykjavik":"Reikiavik","Riga":"Riga","Rome":"Roma","San Marino":"San Marino","Sarajevo":"Sarajevo","Skopje":"Skopie","Sofia":"Sofía","Stockholm":"Estocolmo","Tallinn":"Tallin","Tirana":"Tirana","Vaduz":"Vaduz","Valletta":"La Valeta","Vatican City":"Ciudad del Vaticano","Vienna":"Viena","Vilnius":"Vilna","Warsaw":"Varsovia","Zagreb":"Zagreb",
   "Abu Dhabi":"Abu Dabi","Amman":"Amán","Ankara":"Ankara","Astana":"Astaná","Baghdad":"Bagdad","Baku":"Bakú","Beijing":"Pekín","Peking":"Pekín","Beirut":"Beirut","Damascus":"Damasco","Dhaka":"Daca","Doha":"Doha","Hanoi":"Hanói","Islamabad":"Islamabad","Jakarta":"Yakarta","Jerusalem":"Jerusalén","Kabul":"Kabul","Kathmandu":"Katmandú","Kuala Lumpur":"Kuala Lumpur","Manila":"Manila","Muscat":"Mascate","New Delhi":"Nueva Delhi","Nur-Sultan":"Astaná","Phnom Penh":"Nom Pen","Riyadh":"Riad","Seoul":"Seúl","Singapore":"Singapur","Sri Jayawardenepura Kotte":"Sri Jayawardenapura Kotte","Taipei":"Taipéi","Tashkent":"Taskent","Tehran":"Teherán","Thimphu":"Timbu","Tokyo":"Tokio","Ulaanbaatar":"Ulán Bator","Vientiane":"Vientián","Sanaa":"Saná",
@@ -49,28 +44,33 @@ const CAPITAL_ES = {
 };
 const toSpanishCapital = cap => cap ? (CAPITAL_ES[cap] || cap) : "";
 
-// ===== Estado =====
+/* ========= Estado ========= */
 let ALL = []; // {code, nameES, capitalES, region, population}
+
 let playerName = "";
-let currentMode = null;       // flags | capitals | mixed | survival | study | daily
+let currentMode  = null;     // flags | capitals | mixed | survival | study | daily
 let currentLevel = 'adult';
-let currentTheme = 'all';     // all | Europe | Africa | Asia | Americas | Oceania
+let currentTheme = 'all';    // all | Europe | Africa | Asia | Americas | Oceania
+
 let optionsPool = [];
 let order = [];
 let idx = 0;
+
 let score = 0, hits = 0, misses = 0;
 let locked = false;
 let paused = false;
+
 let timeLeft = 0, timeInterval = null, nextTimer = null;
 let qActiveStartMs = 0, qAccumulatedMs = 0;
 let timesMs = [];
 let missMap = {};
 let streak = 0;
+
 let muteFx = false;
 let studyQueue = [];
 let unlockedThisRun = new Set();
 
-// ===== LocalStorage keys =====
+/* ========= LocalStorage ========= */
 const LS = {
   name:'pro_player_name',
   scores:'pro_scores',
@@ -79,10 +79,10 @@ const LS = {
   last:'pro_last_sel',
   mute:'pro_mute',
   achievements:'pro_achievements',
-  albums:'pro_albums_v2' // v2: estructura por tipo (flag/capital)
+  albums:'pro_albums_v2'
 };
 
-// ===== Audio =====
+/* ========= Audio ========= */
 const AudioCtx = window.AudioContext || window.webkitAudioContext;
 const audioCtx = new AudioCtx();
 function playTone(f=440,d=0.12,type='sine',vol=0.2){
@@ -96,11 +96,11 @@ function fxCorrect(){ let t=0; [{f:523,d:0.07},{f:659,d:0.07},{f:784,d:0.09}].fo
 function fxWrong(){ const s=260,e=140,steps=6,ms=50; for(let i=0;i<steps;i++){ const f=s+(e-s)*(i/(steps-1)); setTimeout(()=>playTone(f, ms/1000,'sawtooth',0.12), i*ms); } }
 function fxStreak(){ let t=0; [660,880,990,1180].forEach((f)=>{ setTimeout(()=>playTone(f,0.06,'triangle',0.13), t); t+=60; }); }
 
-// ===== Storage helpers =====
+/* ========= Helpers Storage ========= */
 function lsGet(k, def){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):def; }catch{ return def; } }
 function lsSet(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} }
 
-// ===== Carga datos =====
+/* ========= Carga de datos ========= */
 async function loadData(){
   try{
     const [resNames, resAll] = await Promise.all([
@@ -119,6 +119,7 @@ async function loadData(){
       return { code, nameES, capitalES, region, population };
     }).filter(x=>x.code && x.nameES);
   }catch{
+    // fallback mínimo offline
     ALL = [
       {code:"es",nameES:"España",capitalES:"Madrid",region:"Europe",population:47000000},
       {code:"fr",nameES:"Francia",capitalES:"París",region:"Europe",population:65000000},
@@ -132,7 +133,7 @@ async function loadData(){
   }
 }
 
-// ===== UI refs =====
+/* ========= UI refs ========= */
 const ui = {
   playerInput: $('#playerName'),
   goToMode: $('#goToMode'),
@@ -181,7 +182,7 @@ const ui = {
   albumRegionChips: $('#albumRegionChips'),
   openAlbumFromFinal: $('#openAlbumFromFinal'),
 
-  // Logros separados
+  // Logros (modal antiguo — puede no existir) + vitrina nueva
   btnAchievements: $('#btnAchievements'),
   achModal: $('#achModal'),
   achGrid: $('#achGrid'),
@@ -194,8 +195,14 @@ const ui = {
   leagueName: $('#leagueName'),
 };
 
-// ===== Pantallas =====
-const screens = { player: $('#screen-player'), mode: $('#screen-mode'), game: $('#screen-game'), final: $('#finalCard') };
+/* ========= Pantallas ========= */
+const screens = {
+  player: $('#screen-player'),
+  mode:   $('#screen-mode'),
+  game:   $('#screen-game'),
+  final:  $('#finalCard')
+};
+
 function showScreen(name){
   Object.values(screens).forEach(s => s.classList.remove('active'));
   screens[name].classList.add('active');
@@ -203,7 +210,7 @@ function showScreen(name){
   if (name==='mode') updateDailyTile();
 }
 
-// ===== Mute persistente =====
+/* ========= Mute persistente ========= */
 (function initMute(){
   muteFx = lsGet(LS.mute, false);
   const btn = $('#btnMute');
@@ -219,13 +226,14 @@ function showScreen(name){
   }
 })();
 
-// ===== Liga / Stats =====
+/* ========= Liga / Stats helpers ========= */
 function recordGameToLeague({name, score, mode, level, theme, durationMs}){
   const arr = lsGet(LS.scores, []);
   arr.unshift({name, score, mode, level, theme, dateISO:new Date().toISOString(), week: isoWeekStringLocal(), durationMs});
   while(arr.length>300) arr.pop();
   lsSet(LS.scores, arr);
 }
+
 function updateGlobalStatsFromRun(){
   const st = lsGet(LS.stats, { times:{count:0,sumMs:0,maxMs:0,minMs:0}, countries:{} });
   for(const ms of timesMs){
@@ -243,13 +251,13 @@ function updateGlobalStatsFromRun(){
   lsSet(LS.stats, st);
 }
 
-// ===== Achievements =====
+/* ========= Logros (datos base) ========= */
 const ACH = {
-  streak3: {id:'streak3', name:'Racha 3', desc:'Consigue 3 aciertos seguidos', tier:'bronce', icon:'🎯'},
-  streak5: {id:'streak5', name:'Racha 5', desc:'Consigue 5 aciertos seguidos', tier:'plata', icon:'🎯'},
-  survival60: {id:'survival60', name:'Supervivencia 60s', desc:'Aguanta 60s en Supervivencia', tier:'plata', icon:'⏳'},
-  europePerfect: {id:'euPerfect', name:'Europa sin fallos', desc:'Acaba Europa sin fallos', tier:'oro', icon:'🥇'},
-  study10: {id:'study10', name:'Estudio aplicado', desc:'Resuelve 10 en Estudio', tier:'bronce', icon:'📚'}
+  streak3:       {id:'streak3',       name:'Racha 3',           desc:'Consigue 3 aciertos seguidos',  tier:'bronce', icon:'🎯'},
+  streak5:       {id:'streak5',       name:'Racha 5',           desc:'Consigue 5 aciertos seguidos',  tier:'plata',  icon:'🎯'},
+  survival60:    {id:'survival60',    name:'Supervivencia 60s', desc:'Aguanta 60s en Supervivencia',  tier:'plata',  icon:'⏳'},
+  europePerfect: {id:'euPerfect',     name:'Europa sin fallos', desc:'Acaba Europa sin fallos',       tier:'oro',    icon:'🥇'},
+  study10:       {id:'study10',       name:'Estudio aplicado',  desc:'Resuelve 10 en Estudio',        tier:'bronce', icon:'📚'}
 };
 function getAchievements(){ return lsGet(LS.achievements, {}); }
 function unlockAchievement(key){
@@ -260,7 +268,7 @@ function unlockAchievement(key){
 }
 function listAchievements(){ return Object.values(getAchievements()); }
 
-// ===== Daily challenge =====
+/* ========= Reto del día ========= */
 function dailySeedIndex(max){
   const d = todayStr().replaceAll('-','');
   let h = 0; for(let i=0;i<d.length;i++){ h = (h*31 + d.charCodeAt(i)) % 2147483647; }
@@ -347,8 +355,7 @@ function renderDailyModal(){
     });
   });
 }
-
-// ===== Tiempo y pausa =====
+/* ========= Tiempo y pausa ========= */
 function startTimer(tRemain){
   clearInterval(timeInterval);
   const total = (typeof tRemain === 'number') ? tRemain : LEVELS[currentLevel].time;
@@ -390,8 +397,9 @@ function disableAnswers(disabled){
   $$("#card-capital .answer-btn.cap").forEach(b=> b.disabled = disabled);
 }
 
-// ===== Juego =====
+/* ========= Juego ========= */
 function applyThemePool(){
+  // FIX: tema "Mundo" devuelve todo el pool
   return currentTheme === 'all' ? [...ALL] : ALL.filter(x => x.region === currentTheme);
 }
 function pickOptions(correct, pool, n=4){
@@ -402,6 +410,7 @@ function pickOptions(correct, pool, n=4){
     const cand = ALL[randomInt(ALL.length)];
     if (cand && cand.code!==correct.code && !fill.some(o=>o.code===cand.code)) fill.push(cand);
   }
+  // FIX spread correcto
   return shuffle([correct, ...fill]);
 }
 function modeLabel(m){
@@ -422,9 +431,11 @@ function newGame(){
 
   const count = MAX_Q;
   for (let i=0; i<count; i++){
-    if (currentMode === 'flags')      order.push({ kind:'flag',    item: optionsPool[i % optionsPool.length] });
-    else if (currentMode === 'capitals') order.push({ kind:'capital', item: withCapital[i % withCapital.length] || optionsPool[i % optionsPool.length] });
-    else {
+    if (currentMode === 'flags') {
+      order.push({ kind:'flag', item: optionsPool[i % optionsPool.length] });
+    } else if (currentMode === 'capitals') {
+      order.push({ kind:'capital', item: withCapital[i % withCapital.length] || optionsPool[i % optionsPool.length] });
+    } else {
       const kind = (withCapital.length && Math.random()<0.5) ? 'capital' : 'flag';
       const baseK = (kind==='capital') ? (withCapital.length?withCapital:optionsPool) : optionsPool;
       order.push({ kind, item: baseK[i % baseK.length] });
@@ -450,9 +461,9 @@ function newGame(){
 
 function renderQuestion(){
   const q = order[idx];
-  // Guardas anti-rotura: si no hay pregunta válida, aborta con mensaje limpio
+  // FIX: guard seguro (no usar q antes de definir y comprobar .item)
   if (!q || !q.item) {
-    console.warn('No hay pregunta válida para el tema/dificultad actuales:', q);
+    console.warn('No hay pregunta válida para la combinación actual:', q);
     const why = document.getElementById('whyBoxFlag') || document.getElementById('whyBoxCap');
     if (why) why.textContent = 'No hay preguntas disponibles para esta combinación. Prueba otro tema o recarga.';
     return;
@@ -517,11 +528,7 @@ function whyText(country){
   return `${country.nameES} — Región: ${regionBadge(country.region)}${pop}`;
 }
 
-// ===== Álbum (por tipo) =====
-// Estructura v2:
-// albums: { [code]: { code, nameES, region,
-//   flag:{unlocked:boolean,hits:number,unlockedAtISO?:string},
-//   capital:{unlocked:boolean,value:string,hits:number,unlockedAtISO?:string} } }
+/* ========= Álbum (estructura v2 por tipo) ========= */
 function getAlbum(){ return lsGet(LS.albums, {}); }
 function saveAlbum(obj){ lsSet(LS.albums, obj); }
 function ensureAlbumEntry(country){
@@ -556,10 +563,10 @@ function markCapitalLearned(country){
   unlockedThisRun.add(country.code);
 }
 
-// ---- Progreso por región (barras + %) ----
+/* ========= Progreso por región ========= */
 const REGION_KEYS = ["all","Europe","Asia","Americas","Oceania","Africa","Other"];
 const REGION_LABELS = { all:"Mundo", Europe:"Europa", Asia:"Asia", Americas:"América", Oceania:"Oceanía", Africa:"África", Other:"Otras" };
-const REGION_ICONS = { all:"🌍", Europe:"🧭", Asia:"🏮", Americas:"🗽", Oceania:"🐚", Africa:"🏜️", Other:"🌋" };
+const REGION_ICONS  = { all:"🌍",   Europe:"🧭",   Asia:"🏮",  Americas:"🗽",   Oceania:"🐚",    Africa:"🏜️",   Other:"🌋" };
 
 function countTotalsByRegion(){
   const map = {};
@@ -592,7 +599,7 @@ function barHtml(label, val, total){
     </div>`;
 }
 
-// ---- Render controles de región (chips) ----
+/* ========= Controles de región (chips) ========= */
 function renderAlbumRegionChips(active='all'){
   const wrap = ui.albumRegionChips;
   const html = REGION_KEYS.map(k => `
@@ -611,12 +618,12 @@ function renderAlbumRegionChips(active='all'){
   });
 }
 
-// ---- Estantería de insignias por región ----
+/* ========= Estantería de insignias por región ========= */
 function trophiesFromProgress(mp){
   const out = [];
   for (const k of ["Europe","Asia","Americas","Oceania","Africa","Other"]){
     const row = mp[k]; if(!row || !row.total) continue;
-    const pAll = Math.round(((row.flag+row.capital)/Math.max(1,row.total*2))*100); // media de banderas+capitales
+    const pAll = Math.round(((row.flag+row.capital)/Math.max(1,row.total*2))*100);
     let icon = "⬜", color = "bg-slate-100 text-slate-600", pulse=false, label = `${REGION_LABELS[k]} ${pAll}%`;
     if (pAll>=100){ icon="🥇"; color="bg-amber-100 text-amber-700"; pulse=true; }
     else if (pAll>=50){ icon="🥈"; color="bg-sky-100 text-sky-700"; }
@@ -636,7 +643,7 @@ function renderAlbumTrophies(mp){
     </div>`).join('');
 }
 
-// ---- Progreso por región (módulo superior) ----
+/* ========= Progreso por región (módulo) ========= */
 function renderAlbumProgress(){
   const mp = countTotalsByRegion();
   let html = `
@@ -668,13 +675,11 @@ function renderAlbumProgress(){
     <span class="inline-flex items-center gap-1 text-amber-600 font-bold text-sm badge-pulse">★ Insignia global</span>
   </div>`;
   ui.albumProgress.innerHTML = html;
-
-  // Trophies shelf
   renderAlbumTrophies(mp);
   return mp;
 }
 
-// ---- Álbum: render Pokedex grid ----
+/* ========= Álbum: grid tipo Pokédex ========= */
 let albumActiveRegion = 'all';
 function renderAlbum(region=albumActiveRegion){
   albumActiveRegion = region;
@@ -752,7 +757,7 @@ function renderAlbum(region=albumActiveRegion){
   renderAlbumProgress();
 }
 
-// ===== Selección / respuesta =====
+/* ========= Selección / respuesta ========= */
 function onSelect(e){
   if (locked || paused) return;
   locked = true;
@@ -860,6 +865,7 @@ function nextQuestion(){
   if (idx < MAX_Q - 1){ idx++; renderQuestion(); } else { endGame(false); }
 }
 
+/* ========= Supervivencia ========= */
 let survivalInterval = null;
 let timeSurvivedSec = 0;
 function startSurvivalTimer(){
@@ -900,8 +906,7 @@ function endGame(){
   recordGameToLeague({name: playerName||'Anónimo', score, mode: modeLabel(currentMode), level: currentLevel, theme: currentTheme, durationMs});
   updateGlobalStatsFromRun();
 }
-
-// ===== Liga =====
+/* ========= Liga ========= */
 function renderLeague(){
   const scores = lsGet(LS.scores, []);
   const week = isoWeekStringLocal();
@@ -942,7 +947,7 @@ function renderLeague(){
   ui.leagueName.value = playerName || '';
 }
 
-// ===== Stats =====
+/* ========= Estadísticas ========= */
 function msToStr(ms){ const s=Math.round(ms/1000); return s+'s'; }
 function renderStats(tab='overview'){
   const st = lsGet(LS.stats, { times:{count:0,sumMs:0,maxMs:0,minMs:0}, countries:{} });
@@ -960,7 +965,8 @@ function renderStats(tab='overview'){
   }
 
   if (tab==='mistakes'){
-  const arr = Object.entries(st.countries||{}).map(([code, v]) => ({ code, ...v, rate: (v.wrong||0)/Math.max(1,(v.attempts||0)) }))
+    // FIX: spread ...v correcto
+    const arr = Object.entries(st.countries||{}).map(([code, v]) => ({ code, ...v, rate: (v.wrong||0)/Math.max(1,(v.attempts||0)) }))
       .filter(x=>x.attempts>2).sort((a,b)=> b.rate - a.rate).slice(0,15);
     $('#statsContent').innerHTML = arr.length ? `
       <table class="w-full text-sm">
@@ -991,13 +997,13 @@ function renderStats(tab='overview'){
   }
 }
 
-// ===== Logros (modal separado) =====
+/* ========= Logros (modal viejo → vitrina nueva) ========= */
 function renderAchievementsModal(){
   const modal = document.getElementById('achModal');
   const grid  = document.getElementById('achGrid');
   const empty = document.getElementById('achEmpty');
 
-  // Si ya no existe el modal viejo, redirigimos a la vitrina nueva y salimos
+  // Si ya no existe el modal viejo, redirigimos a la vitrina nueva
   if (!modal || !grid) {
     const section = document.getElementById('achievementsSection');
     if (section) {
@@ -1007,18 +1013,15 @@ function renderAchievementsModal(){
     return;
   }
 
-  // (tu lógica antigua puede seguir aquí si aún usas el modal en alguna build)
-}
-
   const ach = listAchievements();
   if (!ach.length){
-    ui.achGrid.innerHTML = '';
-    ui.achEmpty.classList.remove('hidden');
+    grid.innerHTML = '';
+    empty.classList.remove('hidden');
     return;
   }
-  ui.achEmpty.classList.add('hidden');
+  empty.classList.add('hidden');
   const palette = { bronce:'bg-amber-100 text-amber-800', plata:'bg-slate-100 text-slate-700', oro:'bg-yellow-100 text-yellow-800' };
-  ui.achGrid.innerHTML = ach.map(a=>`
+  grid.innerHTML = ach.map(a=>`
     <div class="rounded-2xl border p-4 ${palette[a.tier]||'bg-slate-100 text-slate-700'} shadow-sm">
       <div class="flex items-start gap-3">
         <div class="text-3xl">${a.icon || '🏅'}</div>
@@ -1029,13 +1032,16 @@ function renderAchievementsModal(){
         </div>
       </div>
     </div>`).join('');
-// ===== Eventos =====
+}
+
+/* ========= Eventos UI ========= */
+// Inicio
 ui.goToMode.addEventListener('click', ()=>{
   playerName = ui.playerInput.value.trim() || 'Anónimo';
   lsSet(LS.name, playerName);
   showScreen('mode');
 });
-$('#backToPlayer').addEventListener('click', ()=> showScreen('player'));
+ui.backToPlayer.addEventListener('click', ()=> showScreen('player'));
 
 // Selecciones
 $$('.mode-btn').forEach(b=>{
@@ -1065,7 +1071,7 @@ $$('.level-btn').forEach(b=>{
   });
 });
 
-// Jugar directo
+// Jugar
 ui.startGame.addEventListener('click', ()=>{
   if (!currentMode || currentMode==='daily'){ alert('Elige un modo (excepto Reto del día)'); return; }
   if (!currentTheme){ alert('Elige un tema'); return; }
@@ -1108,7 +1114,7 @@ ui.openAlbumFromFinal?.addEventListener('click', ()=>{
   renderAlbum('all');
 });
 
-// Modales básicos
+/* ========= Modales & tabs ========= */
 $('#helpBtn').addEventListener('click', ()=> $("#helpModal").showModal());
 $('#closeHelp').addEventListener('click', ()=> $("#helpModal").close());
 
@@ -1137,13 +1143,12 @@ ui.btnAlbum?.addEventListener('click', ()=>{
 ui.closeAlbum?.addEventListener('click', ()=> ui.albumModal.close());
 ui.albumSearch?.addEventListener('input', ()=> renderAlbum(albumActiveRegion));
 
-// Logros separados
+// Logros (botón header) — compat vitrina nueva / modal antiguo
 ui.btnAchievements?.addEventListener('click', ()=>{
-// ——— Abrir vitrina de logros (compat modal viejo ↔ vitrina nueva)
-(function(){
-  const achModal   = document.getElementById('achModal');                 // puede no existir
-  const achSection = document.getElementById('achievementsSection');      // nueva vitrina
+  const achModal   = document.getElementById('achModal');
+  const achSection = document.getElementById('achievementsSection');
   if (achModal && typeof achModal.showModal === 'function') {
+    renderAchievementsModal();
     achModal.showModal();
   } else if (achSection) {
     achSection.classList.remove('hidden');
@@ -1151,18 +1156,16 @@ ui.btnAchievements?.addEventListener('click', ()=>{
     const top = achSection.getBoundingClientRect().top + window.scrollY - 16;
     window.scrollTo({ top, behavior:'smooth' });
   }
-})();
-
-  ui.achModal.showModal();
 });
-$('#closeAch').addEventListener('click', ()=> ui.achModal.close());
+$('#closeAch')?.addEventListener('click', ()=> ui.achModal?.close?.());
 
 // Respuestas
 $$("#card-flag .answer-btn").forEach(b=> b.addEventListener('click', onSelect));
 $$("#card-capital .answer-btn.cap").forEach(b=> b.addEventListener('click', onSelect));
 
-// ===== Carga inicial =====
+/* ========= Carga inicial ========= */
 async function ensureDataLoaded(){ if(!ALL.length) await loadData(); }
+
 window.addEventListener('DOMContentLoaded', async ()=>{
   playerName = lsGet(LS.name, "") || "";
   if(playerName) $("#playerName").value = playerName;
@@ -1178,45 +1181,30 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   }
   updateDailyTile();
 });
-// === PANEL DE CONTROL INTERNO (init robusto) ===
+
+/* ========= Panel dev (opcional, tolerante) ========= */
 (function initDevPanel(){
   function setup(){
     const devPanel = document.getElementById('devControl');
     const btnDevToggle = document.getElementById('btnDevToggle');
     const btnCloseControl = document.getElementById('btnCloseControl');
-
-    if (!devPanel || !btnDevToggle) return; // si no existen, no hacemos nada
+    if (!devPanel || !btnDevToggle) return;
 
     const checkboxes = devPanel.querySelectorAll('input[type="checkbox"]');
     const savedProgress = JSON.parse(localStorage.getItem('devProgress') || '{}');
 
-    // Estado inicial de checks
     checkboxes.forEach(chk => { chk.checked = !!savedProgress[chk.id]; });
-
-    // Toggle panel
     btnDevToggle.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
+      e.preventDefault(); e.stopPropagation();
       devPanel.classList.toggle('hidden');
     });
-
-    // Cerrar panel
-    if (btnCloseControl) {
-      btnCloseControl.addEventListener('click', (e) => {
-        e.preventDefault();
-        devPanel.classList.add('hidden');
-      });
-    }
-
-    // Guardar cambios
+    btnCloseControl?.addEventListener('click', (e) => { e.preventDefault(); devPanel.classList.add('hidden'); });
     checkboxes.forEach(chk => {
       chk.addEventListener('change', () => {
         savedProgress[chk.id] = chk.checked;
         localStorage.setItem('devProgress', JSON.stringify(savedProgress));
       });
     });
-
-    // También cerramos si se hace click fuera del panel (opcional)
     document.addEventListener('click', (ev) => {
       if (!devPanel.classList.contains('hidden')) {
         const inside = devPanel.contains(ev.target) || btnDevToggle.contains(ev.target);
@@ -1224,237 +1212,6 @@ window.addEventListener('DOMContentLoaded', async ()=>{
       }
     });
   }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', setup, { once: true });
-  } else {
-    // Si el DOM ya cargó, inicializamos ahora mismo
-    setup();
-  }
-})();
-// ===== Sala de Logros — datos base (placeholder) =====
-// Sustituiremos por tu Excel más adelante.
-const ACHIEVEMENTS_BASE = [
-  // RACHAS
-  {id:'logro_racha_1',  name:'Primer acierto', desc:'Aciertas tu primera pregunta.', cat:'Rachas', icon:'🎉', rare:false},
-  {id:'logro_racha_3',  name:'Empieza la racha', desc:'Consigues 3 aciertos seguidos.', cat:'Rachas', icon:'✨', rare:false},
-  {id:'logro_racha_7',  name:'En calor', desc:'Consigues 7 aciertos seguidos.', cat:'Rachas', icon:'🔥', rare:false},
-  {id:'logro_racha_10', name:'Ronda perfecta', desc:'10 aciertos seguidos sin fallar.', cat:'Rachas', icon:'👑', rare:true},
-
-  // SUPERVIVENCIA
-  {id:'sup_1',  name:'Superviviente novato', desc:'1 acierto en modo Supervivencia.', cat:'Supervivencia', icon:'🔦', rare:false},
-  {id:'sup_3',  name:'Aguantando', desc:'3 aciertos seguidos en Supervivencia.', cat:'Supervivencia', icon:'🕯️', rare:false},
-  {id:'sup_7',  name:'Sigue con vida', desc:'7 aciertos seguidos en Supervivencia.', cat:'Supervivencia', icon:'❤️', rare:false},
-  {id:'sup_11', name:'Inmortal en práctica', desc:'11 aciertos seguidos.', cat:'Supervivencia', icon:'🛡️', rare:false},
-  {id:'sup_25', name:'Leyenda superviviente', desc:'25 aciertos seguidos.', cat:'Supervivencia', icon:'🔥', rare:true},
-  {id:'sup_49', name:'Casi cincuenta...', desc:'49 aciertos seguidos. ¡Cruel!', cat:'Supervivencia', icon:'💀', rare:true},
-  {id:'sup_99', name:'El elegido', desc:'99 aciertos seguidos.', cat:'Supervivencia', icon:'⚡', rare:true},
-  {id:'sup_imposible', name:'¿Esto es real?', desc:'Supervivencia completa sin fallar (secreto).', cat:'Supervivencia', icon:'🌀', rare:true},
-
-  // RETO DEL DÍA
-  {id:'reto_1',  name:'Primer reto superado', desc:'Superas tu primer reto diario.', cat:'Reto del día', icon:'✅', rare:false},
-  {id:'reto_5',  name:'Semana prometedora', desc:'5 retos seguidos.', cat:'Reto del día', icon:'⭐', rare:false},
-  {id:'reto_7',  name:'Semana perfecta', desc:'7 retos seguidos sin fallar.', cat:'Reto del día', icon:'🏆', rare:true},
-  {id:'reto_11', name:'Once es un número mágico', desc:'11 días seguidos.', cat:'Reto del día', icon:'🔮', rare:true},
-  {id:'reto_17', name:'Maratón de retos', desc:'17 días seguidos.', cat:'Reto del día', icon:'🏁', rare:true},
-  {id:'reto_mes', name:'Imparable', desc:'30 días seguidos completando el reto.', cat:'Reto del día', icon:'📅', rare:true},
-];
-
-// Estado local (simulado): aquí marcarás desbloqueados
-const achvState = JSON.parse(localStorage.getItem('achievementsState') || '{}'); // {id: {unlockedAt: ts}}
-function setAchvUnlocked(id, ts = Date.now()){
-  achvState[id] = { unlockedAt: ts };
-  localStorage.setItem('achievementsState', JSON.stringify(achvState));
-}
-
-function isUnlocked(id){ return !!achvState[id]; }
-function unlockedAt(id){ return achvState[id]?.unlockedAt || null; }
-
-// Render principal
-function renderAchievements(){
-  const wrap = document.getElementById('achievementsGrid');
-  if(!wrap) return;
-
-  const total = ACHIEVEMENTS_BASE.length;
-  const unlocked = ACHIEVEMENTS_BASE.filter(a=>isUnlocked(a.id)).length;
-  const pct = total? Math.round(100*unlocked/total):0;
-  const bar = document.getElementById('achievementsBar');
-  const label = document.getElementById('achievementsPct');
-  if(bar) bar.style.width = pct+'%';
-  if(label) label.textContent = String(pct).padStart(2,'0')+'%';
-
-  wrap.innerHTML = ACHIEVEMENTS_BASE.map(a=>{
-    const unlocked = isUnlocked(a.id);
-    const cls = `achv-card ${unlocked?'achv-unlocked':'achv-locked'} ${a.rare?'achv-rare':''}`;
-    return `
-      <div class="${cls}" data-achv="${a.id}">
-        <div class="achv-art">${a.icon}</div>
-        <div class="achv-title">${a.name}</div>
-        <div class="achv-cat">${a.cat}</div>
-      </div>
-    `;
-  }).join('');
-
-  // Click para abrir detalle
-  wrap.querySelectorAll('[data-achv]').forEach(el=>{
-    el.addEventListener('click', ()=>{
-      const id = el.getAttribute('data-achv');
-      openAchievementDrawer(id);
-    });
-  });
-}
-
-// Drawer detalle
-function openAchievementDrawer(id){
-  const a = ACHIEVEMENTS_BASE.find(x=>x.id===id);
-  if(!a) return;
-  document.getElementById('achvArt').textContent = a.icon;
-  document.getElementById('achvName').textContent = a.name;
-  document.getElementById('achvCat').textContent = a.cat;
-  document.getElementById('achvDesc').textContent = a.desc;
-  const ts = unlockedAt(a.id);
-  document.getElementById('achvDate').textContent = ts ? ('Desbloqueado el ' + new Date(ts).toLocaleString()) : 'Aún bloqueado';
-  document.body.classList.add('drawer-open');
-}
-
-(function initAchievementsUI(){
-  const closeBtn = document.getElementById('closeAchievementDrawer');
-  if(closeBtn){
-    closeBtn.addEventListener('click', ()=> document.body.classList.remove('drawer-open'));
-  }
-  // Si tienes ya un botón/menú "Logros", engánchalo aquí:
-  // document.getElementById('btnOpenAchievements')?.addEventListener('click', ()=>{
-  //   document.getElementById('achievementsSection').classList.remove('hidden');
-  //   renderAchievements();
-  // });
-
-  // Render en carga si decides que esté visible por defecto:
-  // document.getElementById('achievementsSection').classList.remove('hidden');
-  // renderAchievements();
-})();
-/* ===== BRIDGE: compat modal viejo ↔ vitrina nueva ===== */
-(function(){
-  try {
-    // Abrir logros desde el botón del header
-    const btnAch = document.getElementById('btnAchievements');
-    if (btnAch) {
-      btnAch.addEventListener('click', () => {
-        const achModal   = document.getElementById('achModal');
-        const achSection = document.getElementById('achievementsSection');
-        if (achModal && typeof achModal.showModal === 'function') {
-          achModal.showModal();
-        } else if (achSection) {
-          achSection.classList.remove('hidden');
-          if (typeof renderAchievements === 'function') renderAchievements();
-          const top = achSection.getBoundingClientRect().top + window.scrollY - 16;
-          window.scrollTo({ top, behavior:'smooth' });
-        }
-      });
-    }
-
-    // Cierre del drawer de la vitrina nueva (si existe)
-    const btnCloseDrawer = document.getElementById('closeAchievementDrawer');
-    if (btnCloseDrawer) {
-      btnCloseDrawer.addEventListener('click', () => {
-        document.body.classList.remove('drawer-open');
-      });
-    }
-  } catch (e) {
-    console.warn('Bridge logros: desactivado por error', e);
-  }
-})();
-/* ===== BRIDGE LOGROS: garantiza botón y cierre del drawer ===== */
-(function achievementsBridge(){
-  try {
-    if (typeof window.renderAchievements !== 'function') window.renderAchievements = function(){};
-
-    const btnAch = document.getElementById('btnAchievements');
-    const achModal = document.getElementById('achModal');
-    const achSection = document.getElementById('achievementsSection');
-    const btnCloseDrawer = document.getElementById('closeAchievementDrawer');
-
-    if (btnAch) {
-      btnAch.addEventListener('click', () => {
-        if (achModal && typeof achModal.showModal === 'function') {
-          achModal.showModal();
-        } else if (achSection) {
-          achSection.classList.remove('hidden');
-          try { renderAchievements(); } catch (_) {}
-          const top = achSection.getBoundingClientRect().top + window.scrollY - 16;
-          window.scrollTo({ top, behavior:'smooth' });
-        }
-      });
-    }
-
-    if (btnCloseDrawer) {
-      btnCloseDrawer.addEventListener('click', () => {
-        document.body.classList.remove('drawer-open');
-      });
-    }
-  } catch(e) {
-    console.warn('Achievements bridge disabled:', e);
-  }
-})();
-/* ===== FIX BOTONES CABECERA + NAVEGACIÓN BÁSICA ===== */
-(function uiFixes(){
-  try {
-    // Si tu app ya define showScreen, no lo pisamos; si no, lo creamos.
-    if (typeof window.showScreen !== 'function') {
-      window.showScreen = function(id){
-        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-        const el = document.getElementById(id);
-        if (el) el.classList.add('active');
-      };
-    }
-
-    function bind(id, handler){
-      const el = document.getElementById(id);
-      if (el) el.addEventListener('click', handler);
-    }
-    function openDlg(id){
-      const dlg = document.getElementById(id);
-      if (dlg && typeof dlg.showModal === 'function') dlg.showModal();
-    }
-    function closeDlg(id){
-      const dlg = document.getElementById(id);
-      if (dlg && typeof dlg.close === 'function') dlg.close();
-    }
-
-    // Header: abrir modales
-    bind('btnAlbum',  () => openDlg('albumModal'));
-    bind('btnLeague', () => openDlg('leagueModal'));
-    bind('btnStats',  () => openDlg('statsModal'));
-    bind('helpBtn',   () => openDlg('helpModal'));
-
-    // Cierres de modales
-    bind('closeAlbum', () => closeDlg('albumModal'));
-    bind('closeLeague',() => closeDlg('leagueModal'));
-    bind('closeStats', () => closeDlg('statsModal'));
-    bind('closeHelp',  () => closeDlg('helpModal'));
-    bind('closeDaily', () => closeDlg('dailyModal'));
-
-    // Navegación inicial
-    bind('goToMode',    () => showScreen('screen-mode'));
-    bind('backToPlayer',() => showScreen('screen-player'));
-
-    // Botón "Logros": ya lo puenteamos, pero por si acaso no existe el bridge
-    const btnAch = document.getElementById('btnAchievements');
-    if (btnAch && typeof btnAch._achBound === 'undefined') {
-      btnAch._achBound = true;
-      btnAch.addEventListener('click', () => {
-        const achModal   = document.getElementById('achModal');
-        const achSection = document.getElementById('achievementsSection');
-        if (achModal && typeof achModal.showModal === 'function') {
-          achModal.showModal();
-        } else if (achSection) {
-          achSection.classList.remove('hidden');
-          if (typeof renderAchievements === 'function') renderAchievements();
-          const top = achSection.getBoundingClientRect().top + window.scrollY - 16;
-          window.scrollTo({ top, behavior:'smooth' });
-        }
-      });
-    }
-  } catch(e){
-    console.warn('uiFixes error:', e);
-  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setup, { once:true });
+  else setup();
 })();
