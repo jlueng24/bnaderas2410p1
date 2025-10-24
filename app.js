@@ -1313,4 +1313,47 @@ function openAchievementDrawer(id){
       // Quitamos posibles listeners previos problemáticos
       btnAch.replaceWith(btnAch.cloneNode(true));
       const fresh
+      /* ===== HOTFIX: puente de Logros (modal viejo ↔ vitrina nueva) ===== */
+(function achievementsBridge(){
+  try {
+    // Garantizamos funciones no-op para que nada rompa si falta algo
+    if (typeof window.renderAchievements !== 'function') window.renderAchievements = function(){};
+    if (typeof window.openAchievementDrawer !== 'function') window.openAchievementDrawer = function(){};
+
+    const achModal        = document.getElementById('achModal');                 // puede no existir (modal antiguo)
+    const achSection      = document.getElementById('achievementsSection');      // nueva vitrina
+    const btnAchievements = document.getElementById('btnAchievements');
+    const btnCloseDrawer  = document.getElementById('closeAchievementDrawer');
+
+    // Bind seguro del botón "🏅 Logros"
+    if (btnAchievements) {
+      btnAchievements.addEventListener('click', () => {
+        // Si existe el modal antiguo, úsalo
+        if (achModal && typeof achModal.showModal === 'function') {
+          achModal.showModal();
+          return;
+        }
+        // Si no, usamos la nueva vitrina
+        if (achSection) {
+          achSection.classList.remove('hidden');
+          try { renderAchievements(); } catch(_) {}
+          // scroll suave hasta la vitrina
+          const top = achSection.getBoundingClientRect().top + window.scrollY - 16;
+          window.scrollTo({ top, behavior: 'smooth' });
+        }
+      });
+    }
+
+    // Cerrar panel lateral detalle (nueva vitrina)
+    if (btnCloseDrawer) {
+      btnCloseDrawer.addEventListener('click', () => {
+        document.body.classList.remove('drawer-open');
+      });
+    }
+  } catch (e) {
+    console.warn('Achievements bridge disabled:', e);
+  }
+})();
+
+
 
