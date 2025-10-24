@@ -1195,3 +1195,103 @@ window.addEventListener('DOMContentLoaded', async ()=>{
     setup();
   }
 })();
+// ===== Sala de Logros — datos base (placeholder) =====
+// Sustituiremos por tu Excel más adelante.
+const ACHIEVEMENTS_BASE = [
+  // RACHAS
+  {id:'logro_racha_1',  name:'Primer acierto', desc:'Aciertas tu primera pregunta.', cat:'Rachas', icon:'🎉', rare:false},
+  {id:'logro_racha_3',  name:'Empieza la racha', desc:'Consigues 3 aciertos seguidos.', cat:'Rachas', icon:'✨', rare:false},
+  {id:'logro_racha_7',  name:'En calor', desc:'Consigues 7 aciertos seguidos.', cat:'Rachas', icon:'🔥', rare:false},
+  {id:'logro_racha_10', name:'Ronda perfecta', desc:'10 aciertos seguidos sin fallar.', cat:'Rachas', icon:'👑', rare:true},
+
+  // SUPERVIVENCIA
+  {id:'sup_1',  name:'Superviviente novato', desc:'1 acierto en modo Supervivencia.', cat:'Supervivencia', icon:'🔦', rare:false},
+  {id:'sup_3',  name:'Aguantando', desc:'3 aciertos seguidos en Supervivencia.', cat:'Supervivencia', icon:'🕯️', rare:false},
+  {id:'sup_7',  name:'Sigue con vida', desc:'7 aciertos seguidos en Supervivencia.', cat:'Supervivencia', icon:'❤️', rare:false},
+  {id:'sup_11', name:'Inmortal en práctica', desc:'11 aciertos seguidos.', cat:'Supervivencia', icon:'🛡️', rare:false},
+  {id:'sup_25', name:'Leyenda superviviente', desc:'25 aciertos seguidos.', cat:'Supervivencia', icon:'🔥', rare:true},
+  {id:'sup_49', name:'Casi cincuenta...', desc:'49 aciertos seguidos. ¡Cruel!', cat:'Supervivencia', icon:'💀', rare:true},
+  {id:'sup_99', name:'El elegido', desc:'99 aciertos seguidos.', cat:'Supervivencia', icon:'⚡', rare:true},
+  {id:'sup_imposible', name:'¿Esto es real?', desc:'Supervivencia completa sin fallar (secreto).', cat:'Supervivencia', icon:'🌀', rare:true},
+
+  // RETO DEL DÍA
+  {id:'reto_1',  name:'Primer reto superado', desc:'Superas tu primer reto diario.', cat:'Reto del día', icon:'✅', rare:false},
+  {id:'reto_5',  name:'Semana prometedora', desc:'5 retos seguidos.', cat:'Reto del día', icon:'⭐', rare:false},
+  {id:'reto_7',  name:'Semana perfecta', desc:'7 retos seguidos sin fallar.', cat:'Reto del día', icon:'🏆', rare:true},
+  {id:'reto_11', name:'Once es un número mágico', desc:'11 días seguidos.', cat:'Reto del día', icon:'🔮', rare:true},
+  {id:'reto_17', name:'Maratón de retos', desc:'17 días seguidos.', cat:'Reto del día', icon:'🏁', rare:true},
+  {id:'reto_mes', name:'Imparable', desc:'30 días seguidos completando el reto.', cat:'Reto del día', icon:'📅', rare:true},
+];
+
+// Estado local (simulado): aquí marcarás desbloqueados
+const achvState = JSON.parse(localStorage.getItem('achievementsState') || '{}'); // {id: {unlockedAt: ts}}
+function setAchvUnlocked(id, ts = Date.now()){
+  achvState[id] = { unlockedAt: ts };
+  localStorage.setItem('achievementsState', JSON.stringify(achvState));
+}
+
+function isUnlocked(id){ return !!achvState[id]; }
+function unlockedAt(id){ return achvState[id]?.unlockedAt || null; }
+
+// Render principal
+function renderAchievements(){
+  const wrap = document.getElementById('achievementsGrid');
+  if(!wrap) return;
+
+  const total = ACHIEVEMENTS_BASE.length;
+  const unlocked = ACHIEVEMENTS_BASE.filter(a=>isUnlocked(a.id)).length;
+  const pct = total? Math.round(100*unlocked/total):0;
+  const bar = document.getElementById('achievementsBar');
+  const label = document.getElementById('achievementsPct');
+  if(bar) bar.style.width = pct+'%';
+  if(label) label.textContent = String(pct).padStart(2,'0')+'%';
+
+  wrap.innerHTML = ACHIEVEMENTS_BASE.map(a=>{
+    const unlocked = isUnlocked(a.id);
+    const cls = `achv-card ${unlocked?'achv-unlocked':'achv-locked'} ${a.rare?'achv-rare':''}`;
+    return `
+      <div class="${cls}" data-achv="${a.id}">
+        <div class="achv-art">${a.icon}</div>
+        <div class="achv-title">${a.name}</div>
+        <div class="achv-cat">${a.cat}</div>
+      </div>
+    `;
+  }).join('');
+
+  // Click para abrir detalle
+  wrap.querySelectorAll('[data-achv]').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const id = el.getAttribute('data-achv');
+      openAchievementDrawer(id);
+    });
+  });
+}
+
+// Drawer detalle
+function openAchievementDrawer(id){
+  const a = ACHIEVEMENTS_BASE.find(x=>x.id===id);
+  if(!a) return;
+  document.getElementById('achvArt').textContent = a.icon;
+  document.getElementById('achvName').textContent = a.name;
+  document.getElementById('achvCat').textContent = a.cat;
+  document.getElementById('achvDesc').textContent = a.desc;
+  const ts = unlockedAt(a.id);
+  document.getElementById('achvDate').textContent = ts ? ('Desbloqueado el ' + new Date(ts).toLocaleString()) : 'Aún bloqueado';
+  document.body.classList.add('drawer-open');
+}
+
+(function initAchievementsUI(){
+  const closeBtn = document.getElementById('closeAchievementDrawer');
+  if(closeBtn){
+    closeBtn.addEventListener('click', ()=> document.body.classList.remove('drawer-open'));
+  }
+  // Si tienes ya un botón/menú "Logros", engánchalo aquí:
+  // document.getElementById('btnOpenAchievements')?.addEventListener('click', ()=>{
+  //   document.getElementById('achievementsSection').classList.remove('hidden');
+  //   renderAchievements();
+  // });
+
+  // Render en carga si decides que esté visible por defecto:
+  // document.getElementById('achievementsSection').classList.remove('hidden');
+  // renderAchievements();
+})();
