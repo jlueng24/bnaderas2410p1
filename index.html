@@ -41,28 +41,29 @@
       .hud-time{width:9rem}
       .answer-btn{padding-block:.9rem}
     }
+
     /* ===== Sala de logros (visual base) ===== */
-.achv-card { position:relative; border-radius:16px; padding:10px; background:#fff; border:1px solid #e5e7eb; cursor:pointer; transition:transform .15s ease, box-shadow .15s ease; }
-.achv-card:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(2,8,23,.08); }
-.achv-art { width:72px; height:72px; border-radius:50%; display:grid; place-items:center; margin:0 auto 8px; background:linear-gradient(180deg,#f8fafc,#eef2f7); border:1px solid #e5e7eb; box-shadow: inset 0 0 0 6px rgba(255,255,255,.7); }
-.achv-title { font-weight:600; font-size:12px; line-height:1.1; text-align:center; }
-.achv-cat { font-size:10px; color:#64748b; text-align:center; margin-top:2px; }
+    .achv-card { position:relative; border-radius:16px; padding:10px; background:#fff; border:1px solid #e5e7eb; cursor:pointer; transition:transform .15s ease, box-shadow .15s ease; }
+    .achv-card:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(2,8,23,.08); }
+    .achv-art { width:72px; height:72px; border-radius:50%; display:grid; place-items:center; margin:0 auto 8px; background:linear-gradient(180deg,#f8fafc,#eef2f7); border:1px solid #e5e7eb; box-shadow: inset 0 0 0 6px rgba(255,255,255,.7); }
+    .achv-title { font-weight:600; font-size:12px; line-height:1.1; text-align:center; }
+    .achv-cat { font-size:10px; color:#64748b; text-align:center; margin-top:2px; }
 
-.achv-locked .achv-art { filter:grayscale(1) contrast(.9) opacity(.7); position:relative; }
-.achv-locked .achv-art:after { content:"🔒"; position:absolute; font-size:18px; transform:translate(22px,-22px); }
-.achv-locked .achv-title { color:#94a3b8; }
+    .achv-locked .achv-art { filter:grayscale(1) contrast(.9) opacity(.7); position:relative; }
+    .achv-locked .achv-art:after { content:"🔒"; position:absolute; font-size:18px; transform:translate(22px,-22px); }
+    .achv-locked .achv-title { color:#94a3b8; }
 
-.achv-unlocked .achv-art { box-shadow: inset 0 0 0 6px rgba(255,255,255,.85), 0 0 0 2px rgba(16,185,129,.35), 0 10px 24px rgba(5,150,105,.15); }
+    .achv-unlocked .achv-art { box-shadow: inset 0 0 0 6px rgba(255,255,255,.85), 0 0 0 2px rgba(16,185,129,.35), 0 10px 24px rgba(5,150,105,.15); }
 
-.achv-rare .achv-art { position:relative; }
-.achv-rare .achv-art:before {
-  content:""; position:absolute; inset:-6px; border-radius:50%;
-  box-shadow: 0 0 0 6px rgba(234,179,8,.25);
-  animation: achvHalo 2.6s ease-in-out infinite; opacity:.25;
-}
-@keyframes achvHalo { 0%,100%{opacity:.2} 50%{opacity:.4} }
+    .achv-rare .achv-art { position:relative; }
+    .achv-rare .achv-art:before {
+      content:""; position:absolute; inset:-6px; border-radius:50%;
+      box-shadow: 0 0 0 6px rgba(234,179,8,.25);
+      animation: achvHalo 2.6s ease-in-out infinite; opacity:.25;
+    }
+    @keyframes achvHalo { 0%,100%{opacity:.2} 50%{opacity:.4} }
 
-.drawer-open #achievementDrawer { transform: translateX(0); }
+    .drawer-open #achievementDrawer { transform: translateX(0); }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800">
@@ -381,46 +382,46 @@
           <!-- FIN Álbum -->
 
           <!-- ===== LOGROS / VITRINA ===== -->
-<section id="achievementsSection" class="hidden">
-  <div class="max-w-6xl mx-auto p-4">
-    <header class="flex items-center justify-between mb-3">
-      <h2 class="text-xl font-bold">Sala de logros</h2>
-      <div class="text-sm text-slate-600">Tu historia en medallas</div>
-    </header>
+          <section id="achievementsSection" class="hidden">
+            <div class="max-w-6xl mx-auto p-4">
+              <header class="flex items-center justify-between mb-3">
+                <h2 class="text-xl font-bold">Sala de logros</h2>
+                <div class="text-sm text-slate-600">Tu historia en medallas</div>
+              </header>
 
-    <!-- Barra resumen -->
-    <div class="rounded-xl border bg-white p-3 mb-3 flex items-center gap-3">
-      <div class="text-3xl">🏛️</div>
-      <div class="flex-1">
-        <div class="font-semibold">Progreso de logros</div>
-        <div class="h-2 bg-slate-100 rounded overflow-hidden">
-          <div id="achievementsBar" class="h-2 bg-emerald-500" style="width:0%"></div>
-        </div>
-      </div>
-      <div id="achievementsPct" class="w-14 text-right font-bold">0%</div>
-    </div>
+              <!-- Barra resumen -->
+              <div class="rounded-xl border bg-white p-3 mb-3 flex items-center gap-3">
+                <div class="text-3xl">🏛️</div>
+                <div class="flex-1">
+                  <div class="font-semibold">Progreso de logros</div>
+                  <div class="h-2 bg-slate-100 rounded overflow-hidden">
+                    <div id="achievementsBar" class="h-2 bg-emerald-500" style="width:0%"></div>
+                  </div>
+                </div>
+                <div id="achievementsPct" class="w-14 text-right font-bold">0%</div>
+              </div>
 
-    <!-- Vitrina -->
-    <div id="achievementsGrid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3"></div>
-  </div>
-</section>
+              <!-- Vitrina -->
+              <div id="achievementsGrid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3"></div>
+            </div>
+          </section>
 
-<!-- Panel lateral detalle logro -->
-<aside id="achievementDrawer" class="fixed top-0 right-0 w-full sm:w-[380px] h-full bg-white border-l shadow-2xl translate-x-full transition-transform duration-300 z-[60]">
-  <div class="p-4 flex items-center justify-between border-b">
-    <div class="font-bold">Detalle del logro</div>
-    <button id="closeAchievementDrawer" class="text-slate-600 hover:text-slate-900">✕</button>
-  </div>
-  <div class="p-5 space-y-3">
-    <div id="achvArt" class="w-40 h-40 mx-auto rounded-full border grid place-items-center text-5xl bg-slate-50">⭐</div>
-    <div class="text-center">
-      <div id="achvName" class="text-lg font-bold">Nombre del logro</div>
-      <div id="achvCat" class="text-xs text-slate-500">Categoría</div>
-    </div>
-    <p id="achvDesc" class="text-sm text-slate-700">Descripción del logro…</p>
-    <div id="achvDate" class="text-xs text-slate-500">—</div>
-  </div>
-</aside>
+          <!-- Panel lateral detalle logro -->
+          <aside id="achievementDrawer" class="fixed top-0 right-0 w-full sm:w-[380px] h-full bg-white border-l shadow-2xl translate-x-full transition-transform duration-300 z-[60]">
+            <div class="p-4 flex items-center justify-between border-b">
+              <div class="font-bold">Detalle del logro</div>
+              <button id="closeAchievementDrawer" class="text-slate-600 hover:text-slate-900">✕</button>
+            </div>
+            <div class="p-5 space-y-3">
+              <div id="achvArt" class="w-40 h-40 mx-auto rounded-full border grid place-items-center text-5xl bg-slate-50">⭐</div>
+              <div class="text-center">
+                <div id="achvName" class="text-lg font-bold">Nombre del logro</div>
+                <div id="achvCat" class="text-xs text-slate-500">Categoría</div>
+              </div>
+              <p id="achvDesc" class="text-sm text-slate-700">Descripción del logro…</p>
+              <div id="achvDate" class="text-xs text-slate-500">—</div>
+            </div>
+          </aside>
           <!-- FIN Logros -->
 
         </div>
@@ -467,4 +468,3 @@
   
 </body>
 </html>
-
