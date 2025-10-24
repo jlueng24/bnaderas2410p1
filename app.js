@@ -1141,31 +1141,35 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   }
   updateDailyTile();
 });
-// === PANEL DE CONTROL INTERNO ===
-const devPanel = document.getElementById('devControl');
-const btnDevToggle = document.getElementById('btnDevToggle');
-const btnCloseControl = document.getElementById('btnCloseControl');
-const checkboxes = devPanel.querySelectorAll('input[type="checkbox"]');
+// === PANEL DE CONTROL INTERNO (fix: esperar al DOM y checks) ===
+document.addEventListener('DOMContentLoaded', () => {
+  const devPanel = document.getElementById('devControl');
+  const btnDevToggle = document.getElementById('btnDevToggle');
+  const btnCloseControl = document.getElementById('btnCloseControl');
 
-// Cargar estado guardado
-const savedProgress = JSON.parse(localStorage.getItem('devProgress') || '{}');
-checkboxes.forEach(chk => {
-  chk.checked = !!savedProgress[chk.id];
-});
+  if (!devPanel || !btnDevToggle) return; // si no existen, salimos sin error
 
-btnDevToggle.addEventListener('click', () => {
-  devPanel.classList.toggle('hidden');
-});
+  const checkboxes = devPanel.querySelectorAll('input[type="checkbox"]');
 
-btnCloseControl.addEventListener('click', () => {
-  devPanel.classList.add('hidden');
-});
+  // Cargar estado guardado
+  const savedProgress = JSON.parse(localStorage.getItem('devProgress') || '{}');
+  checkboxes.forEach(chk => { chk.checked = !!savedProgress[chk.id]; });
 
-// Guardar progreso
-checkboxes.forEach(chk => {
-  chk.addEventListener('change', () => {
-    savedProgress[chk.id] = chk.checked;
-    localStorage.setItem('devProgress', JSON.stringify(savedProgress));
+  btnDevToggle.addEventListener('click', () => {
+    devPanel.classList.toggle('hidden');
+  });
+
+  if (btnCloseControl) {
+    btnCloseControl.addEventListener('click', () => {
+      devPanel.classList.add('hidden');
+    });
+  }
+
+  // Guardar progreso
+  checkboxes.forEach(chk => {
+    chk.addEventListener('change', () => {
+      savedProgress[chk.id] = chk.checked;
+      localStorage.setItem('devProgress', JSON.stringify(savedProgress));
+    });
   });
 });
-
