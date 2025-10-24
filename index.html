@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Diversión con el mundo</title>
+  <meta name="theme-color" content="#0ea5e9" />
+  <link id="manifestLink" rel="manifest" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root{ --tap: 44px; }
+    html,body{height:100%}
+    .app-frame{min-height:100dvh}
+    .hide-scrollbar::-webkit-scrollbar{display:none}
+    .hide-scrollbar{-ms-overflow-style:none;scrollbar-width:none}
+    .screen{display:none}
+    .screen.active{display:block}
+    .answer-btn{transition:transform .06s ease, box-shadow .12s ease}
+    .answer-btn:active{transform:translateY(1px) scale(.99)}
+    .flag-img{object-fit:contain;object-position:center}
+    .kbd{border:1px solid rgb(203 213 225); border-bottom-width:3px; padding:.15rem .45rem; border-radius:.375rem; font-size:.75rem}
+    .btn-ico{display:flex; align-items:center; gap:.5rem}
+    .bar{height:8px;border-radius:9999px;overflow:hidden;background:#e2e8f0}
+    .bar>span{display:block;height:100%;border-radius:9999px;background:linear-gradient(90deg,#0ea5e9,#10b981)}
+
+    /* Pokédex album effects */
+    .shine{position:relative;overflow:hidden}
+    .shine:after{content:"";position:absolute;inset:-100% auto -100% -100%;width:60%;transform:rotate(25deg);
+      background:linear-gradient(90deg,transparent,rgba(255,255,255,.45),transparent);animation:shine 2.4s ease-in-out infinite}
+    @keyframes shine{0%{left:-100%}100%{left:200%}}
+    .flip{perspective:1000px}
+    .flip-inner{transition:transform .6s;transform-style:preserve-3d}
+    .flip:hover .flip-inner{transform:rotateY(180deg)}
+    .flip-face{backface-visibility:hidden}
+    .flip-back{transform:rotateY(180deg)}
+    .badge-pulse{animation:pulse 1.8s ease-in-out infinite}
+    @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+
+    @media (max-width: 640px){
+      .hud-wrap{gap:.5rem}
+      .hud-time{width:9rem}
+      .answer-btn{padding-block:.9rem}
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+  <!-- Top bar -->
+  <header class="sticky top-0 z-50 bg-white/90 backdrop-blur border-b">
+    <div class="max-w-6xl mx-auto px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between gap-2">
+      <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+        <span class="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-sky-600 text-white text-xl shrink-0">🌐</span>
+        <div class="min-w-0">
+          <h1 class="text-base sm:text-lg font-bold leading-tight truncate">Diversión con el mundo</h1>
+          <div class="text-[11px] text-slate-500 hidden sm:block">Diversión con el mundo</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-1 sm:gap-2">
+        <button id="btnFullscreen" type="button" class="px-3 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs sm:text-sm font-semibold" aria-label="Pantalla completa">Pantalla completa</button>
+        <button id="btnInstall" type="button" class="px-3 py-1.5 rounded-xl bg-slate-200 text-slate-500 text-xs sm:text-sm font-semibold cursor-not-allowed" title="Instalar">Instalar</button>
+        <button id="btnMute" type="button" class="px-3 py-1.5 rounded-xl bg-white border text-xs sm:text-sm font-semibold min-w-[var(--tap)]" aria-pressed="false" aria-label="Silenciar/activar sonido">🔊</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto p-2 sm:p-6 app-frame">
+    <div class="rounded-3xl bg-white shadow-sm ring-1 ring-slate-200 p-2 sm:p-6">
+      <div id="APP" class="hide-scrollbar">
+        <div class="max-w-5xl mx-auto p-2 sm:p-4">
+          <!-- Header actions -->
+          <div class="flex items-center justify-between mb-3 sm:mb-4">
+            <div class="text-xs sm:text-sm text-slate-500" id="shortcutHint" aria-live="polite">
+              Atajos: <span class="kbd">1</span>·<span class="kbd">2</span>·<span class="kbd">3</span>·<span class="kbd">4</span>, <span class="kbd">P</span> pausa
+            </div>
+            <div class="flex flex-wrap gap-1 sm:gap-2">
+              <button id="btnAlbum" type="button" class="px-3 py-2 rounded-xl bg-white hover:bg-slate-50 border text-xs sm:text-sm font-semibold">📔 Álbum</button>
+              <button id="btnAchievements" type="button" class="px-3 py-2 rounded-xl bg-white hover:bg-slate-50 border text-xs sm:text-sm font-semibold">🏅 Logros</button>
+              <button id="btnLeague" type="button" class="px-3 py-2 rounded-xl bg-white hover:bg-slate-50 border text-xs sm:text-sm font-semibold">🏆 Liga</button>
+              <button id="btnStats" type="button" class="px-3 py-2 rounded-xl bg-white hover:bg-slate-50 border text-xs sm:text-sm font-semibold">📊 Estadísticas</button>
+              <button id="helpBtn" type="button" class="px-3 py-2 rounded-xl bg-white hover:bg-slate-50 border text-xs sm:text-sm font-semibold">❓ Ayuda</button>
+            </div>
+          </div>
+
+          <!-- Pantalla 0 -->
+          <section id="screen-player" class="screen active" aria-labelledby="player-title">
+            <div class="grid gap-3 sm:gap-4 sm:grid-cols-2">
+              <div class="rounded-2xl border p-4 sm:p-5 bg-slate-50/50">
+                <h2 id="player-title" class="text-lg sm:text-xl font-bold mb-2">👤 Tu perfil</h2>
+                <label for="playerName" class="block text-xs font-semibold text-slate-500 mb-1">Nombre del jugador</label>
+                <input id="playerName" class="w-full px-4 py-3 rounded-xl border bg-white mb-3" placeholder="Ej.: Marta, Lucas, Profe..." inputmode="text" />
+                <div class="text-xs text-slate-500">Se usa en la liga local (este dispositivo).</div>
+              </div>
+              <div class="rounded-2xl border p-4 sm:p-5 bg-slate-50/50">
+                <h3 class="text-lg sm:text-xl font-bold mb-2">ℹ️ Cómo jugar</h3>
+                <ul class="text-sm text-slate-600 space-y-1">
+                  <li>Elige <strong>modo</strong>, <strong>tema</strong> y <strong>dificultad</strong>.</li>
+                  <li>Acierto = +10; en <strong>Máster</strong>, fallo = −5.</li>
+                  <li><strong>Supervivencia:</strong> si fallas, termina; cada acierto suma +2s.</li>
+                  <li><strong>Estudio:</strong> sin tiempo; los fallos reaparecen luego.</li>
+                </ul>
+              </div>
+            </div>
+            <div class="mt-4 flex justify-end">
+              <button id="goToMode" type="button" class="px-4 py-3 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-semibold w-full sm:w-auto">Continuar ➜</button>
+            </div>
+          </section>
+
+          <!-- Pantalla 1 (selecciones) -->
+          <section id="screen-mode" class="screen" aria-labelledby="mode-title">
+            <h2 id="mode-title" class="text-lg sm:text-xl font-bold mb-2">1) Modo</h2>
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
+              <button type="button" class="mode-btn rounded-xl border p-3 sm:p-4 text-left hover:bg-slate-50 min-h-[var(--tap)] btn-ico" data-mode="flags">🏳️ Banderas</button>
+              <button type="button" class="mode-btn rounded-xl border p-3 sm:p-4 text-left hover:bg-slate-50 min-h-[var(--tap)] btn-ico" data-mode="capitals">🏛️ Capitales</button>
+              <button type="button" class="mode-btn rounded-xl border p-3 sm:p-4 text-left hover:bg-slate-50 min-h-[var(--tap)] btn-ico" data-mode="mixed">🔀 Mixto</button>
+              <button type="button" class="mode-btn rounded-xl border p-3 sm:p-4 text-left hover:bg-slate-50 min-h-[var(--tap)] btn-ico" data-mode="survival">💀 Supervivencia</button>
+              <button type="button" class="mode-btn rounded-xl border p-3 sm:p-4 text-left hover:bg-slate-50 min-h-[var(--tap)] btn-ico" data-mode="study">📚 Estudio</button>
+              <button type="button" id="tile-daily" class="mode-btn rounded-xl border p-3 sm:p-4 text-left hover:bg-slate-50 min-h-[var(--tap)] btn-ico" data-mode="daily">🎯 Reto del día</button>
+            </div>
+
+            <h2 class="text-lg sm:text-xl font-bold mt-5 sm:mt-6 mb-2">2) Tema</h2>
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
+              <button type="button" class="theme-btn rounded-xl border p-3 sm:p-4 hover:bg-slate-50 min-h-[var(--tap)] btn-ico" data-theme="all" aria-label="Mundo">🌍 Mundo</button>
+              <button type="button" class="theme-btn rounded-xl border p-3 sm:p-4 hover:bg-slate-50 min-h-[var(--tap)] btn-ico" data-theme="Europe" aria-label="Europa">🧭 Europa</button>
+              <button type="button" class="theme-btn rounded-xl border p-3 sm:p-4 hover:bg-slate-50 min-h-[var(--tap)] btn-ico" data-theme="Asia" aria-label="Asia">🏮 Asia</button>
+              <button type="button" class="theme-btn rounded-xl border p-3 sm:p-4 hover:bg-slate-50 min-h-[var(--tap)] btn-ico" data-theme="Americas" aria-label="América">🗽 América</button>
+              <button type="button" class="theme-btn rounded-xl border p-3 sm:p-4 hover:bg-slate-50 min-h-[var(--tap)] btn-ico" data-theme="Oceania" aria-label="Oceanía">🐚 Oceanía</button>
+              <button type="button" class="theme-btn rounded-xl border p-3 sm:p-4 hover:bg-slate-50 min-h-[var(--tap)] btn-ico" data-theme="Africa" aria-label="África">🏜️ África</button>
+            </div>
+
+            <h2 class="text-lg sm:text-xl font-bold mt-5 sm:mt-6 mb-2">3) Dificultad</h2>
+            <div class="grid grid-cols-3 gap-2 sm:gap-3">
+              <button type="button" class="level-btn rounded-xl border p-3 sm:p-4 hover:bg-slate-50 min-h-[var(--tap)] btn-ico" data-level="kids">🙂 Niños (15s)</button>
+              <button type="button" class="level-btn rounded-xl border p-3 sm:p-4 hover:bg-slate-50 min-h-[var(--tap)] btn-ico" data-level="adult">⚡ Adultos (12s)</button>
+              <button type="button" class="level-btn rounded-xl border p-3 sm:p-4 hover:bg-slate-50 min-h-[var(--tap)] btn-ico" data-level="master">👑 Máster (8s, −5)</button>
+            </div>
+
+            <div class="flex items-center justify-between mt-4 sm:mt-6">
+              <button id="backToPlayer" type="button" class="px-4 py-2 rounded-xl bg-white hover:bg-slate-50 border font-semibold">⬅ Jugador</button>
+              <div class="hidden sm:flex items-center gap-2 text-xs text-slate-500" aria-live="polite">
+                <span>Modo:</span><span id="selMode" class="font-semibold">—</span>
+                <span class="mx-1">·</span>
+                <span>Tema:</span><span id="selTheme" class="font-semibold">—</span>
+                <span class="mx-1">·</span>
+                <span>Dificultad:</span><span id="selLevel" class="font-semibold">—</span>
+              </div>
+              <button id="startGame" type="button" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold">Jugar ➜</button>
+            </div>
+          </section>
+
+          <!-- Pantalla 3: Juego -->
+          <section id="screen-game" class="screen" aria-labelledby="game-title">
+            <h2 id="game-title" class="sr-only">Juego</h2>
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 hud-wrap">
+              <div class="w-full">
+                <div class="flex items-center justify-between text-xs sm:text-sm font-medium mb-1">
+                  <span class="min-w-0 truncate">Jugador: <span id="hudPlayer">—</span> · <span id="hudMode">—</span> · <span id="hudTheme">—</span> · <span class="whitespace-nowrap">Pregunta <span id="qNumber">0</span><span id="qTotal">/10</span></span></span>
+                  <span class="whitespace-nowrap">Puntos: <span id="points">0</span></span>
+                </div>
+                <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden" aria-hidden="true">
+                  <div id="progressBar" class="h-full bg-gradient-to-r from-sky-500 to-emerald-500" style="width:0%"></div>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 sm:gap-3">
+                <div class="text-xs sm:text-sm font-semibold">⏳</div>
+                <div class="w-36 sm:w-40 hud-time">
+                  <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden" aria-hidden="true">
+                    <div id="timeBar" class="h-full bg-gradient-to-r from-rose-500 to-amber-400" style="width:100%"></div>
+                  </div>
+                  <div class="text-center text-xs mt-1 font-bold"><span id="timeLeft">0</span>s</div>
+                </div>
+                <div class="flex items-center gap-2 text-xs sm:text-sm" aria-live="polite">✅ <span id="hits">0</span><span class="opacity-40">·</span>❌ <span id="misses">0</span></div>
+              </div>
+            </div>
+
+            <!-- Carta banderas -->
+            <div id="card-flag" class="grid sm:grid-cols-2 gap-3 sm:gap-6 items-stretch">
+              <div class="rounded-2xl border p-3 sm:p-6 bg-slate-50/50">
+                <div class="text-[11px] sm:text-xs uppercase tracking-widest text-slate-500 font-bold mb-2">¿De qué país es esta bandera?</div>
+                <div class="w-full aspect-video overflow-hidden rounded-xl border bg-white">
+                  <img id="flagImg" alt="Bandera del país a adivinar" class="flag-img w-full h-full select-none" src="" />
+                </div>
+              </div>
+              <div class="grid grid-cols-1 gap-2 sm:gap-3" id="answersFlag" role="group" aria-label="Respuestas banderas">
+                <button class="answer-btn px-4 py-3 rounded-xl bg-white hover:bg-slate-50 border text-left font-semibold" data-index="0" type="button"></button>
+                <button class="answer-btn px-4 py-3 rounded-xl bg-white hover:bg-slate-50 border text-left font-semibold" data-index="1" type="button"></button>
+                <button class="answer-btn px-4 py-3 rounded-xl bg-white hover:bg-slate-50 border text-left font-semibold" data-index="2" type="button"></button>
+                <button class="answer-btn px-4 py-3 rounded-xl bg-white hover:bg-slate-50 border text-left font-semibold" data-index="3" type="button"></button>
+                <div class="mt-1 sm:mt-2 text-xs text-slate-500" id="whyBoxFlag" aria-live="polite"></div>
+                <div class="flex items-center justify-between mt-1 sm:mt-2">
+                  <div class="flex gap-2 w-full justify-between sm:justify-start">
+                    <button id="pauseBtn" type="button" class="px-3 py-2 rounded-xl bg-white hover:bg-slate-50 border font-semibold min-h-[var(--tap)]">⏸ Pausa</button>
+                    <button id="exitBtn" type="button" class="px-3 py-2 rounded-xl bg-white hover:bg-slate-50 border font-semibold min-h-[var(--tap)]">🚪 Salir</button>
+                    <button id="restartBtn" type="button" class="px-3 py-2 rounded-xl bg-white hover:bg-slate-50 border font-semibold min-h-[var(--tap)]">Reiniciar</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Carta capitales -->
+            <div id="card-capital" class="grid sm:grid-cols-2 gap-3 sm:gap-6 items-stretch hidden">
+              <div class="rounded-2xl border p-3 sm:p-6 bg-slate-50/50">
+                <div class="text-[11px] sm:text-xs uppercase tracking-widest text-slate-500 font-bold mb-2">¿De qué país es esta capital?</div>
+                <div class="w-full aspect-video overflow-hidden rounded-xl border bg-white grid place-items-center">
+                  <div class="text-2xl sm:text-4xl font-black text-slate-700 px-4 text-center" id="capitalName">—</div>
+                </div>
+                <div class="mt-2 sm:mt-3 flex items-center gap-3">
+                  <img id="flagImgReveal" class="flag-img w-14 h-10 rounded border hidden" alt="Bandera del país correcto" />
+                  <span id="countryReveal" class="text-sm font-semibold text-emerald-700 hidden"></span>
+                </div>
+              </div>
+              <div class="grid grid-cols-1 gap-2 sm:gap-3" id="answersCap" role="group" aria-label="Respuestas capitales">
+                <button class="answer-btn cap px-4 py-3 rounded-xl bg-white hover:bg-slate-50 border text-left font-semibold" data-index="0" type="button"></button>
+                <button class="answer-btn cap px-4 py-3 rounded-xl bg-white hover:bg-slate-50 border text-left font-semibold" data-index="1" type="button"></button>
+                <button class="answer-btn cap px-4 py-3 rounded-xl bg-white hover:bg-slate-50 border text-left font-semibold" data-index="2" type="button"></button>
+                <button class="answer-btn cap px-4 py-3 rounded-xl bg-white hover:bg-slate-50 border text-left font-semibold" data-index="3" type="button"></button>
+                <div class="mt-1 sm:mt-2 text-xs text-slate-500" id="whyBoxCap" aria-live="polite"></div>
+                <div class="flex items-center justify-between mt-1 sm:mt-2">
+                  <div class="flex gap-2 w-full justify-between sm:justify-start">
+                    <button id="pauseBtn2" type="button" class="px-3 py-2 rounded-xl bg-white hover:bg-slate-50 border font-semibold min-h-[var(--tap)]">⏸ Pausa</button>
+                    <button id="exitBtn2" type="button" class="px-3 py-2 rounded-xl bg-white hover:bg-slate-50 border font-semibold min-h-[var(--tap)]">🚪 Salir</button>
+                    <button id="restartBtn2" type="button" class="px-3 py-2 rounded-xl bg-white hover:bg-slate-50 border font-semibold min-h-[var(--tap)]">Reiniciar</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Final -->
+          <section id="finalCard" class="screen" aria-labelledby="final-title">
+            <h2 id="final-title" class="text-xl sm:text-2xl font-bold mb-2">🎉 Fin de la partida</h2>
+            <p class="mb-4 text-slate-700">Puntos <span id="finalPoints" class="font-extrabold text-emerald-600">0</span> · Aciertos <span id="finalHits" class="font-extrabold">0</span> · Fallos <span id="finalMisses" class="font-extrabold">0</span></p>
+            <div class="rounded-2xl border p-4 bg-slate-50/60">
+              <h3 class="font-bold mb-2">🏅 Logros desbloqueados</h3>
+              <div id="achievementsList" class="flex flex-wrap gap-2 text-sm"></div>
+            </div>
+            <div class="flex flex-wrap gap-2 mt-4">
+              <button id="playAgainBtn" type="button" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold">Jugar otra vez</button>
+              <button id="goHomeBtn" type="button" class="px-4 py-2 rounded-xl bg-white hover:bg-slate-50 border font-semibold">Volver al inicio</button>
+              <button id="shareResult" type="button" class="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-semibold">Compartir puntuación</button>
+              <button id="openAlbumFromFinal" type="button" class="px-4 py-2 rounded-xl bg-white hover:bg-slate-50 border font-semibold hidden">Abrir en el álbum</button>
+            </div>
+          </section>
+
+          <!-- Modales -->
+          <dialog id="helpModal" class="rounded-2xl p-0 w-[min(95vw,40rem)] shadow backdrop:bg-black/40">
+            <div class="bg-white rounded-2xl overflow-hidden">
+              <div class="p-5 sm:p-6">
+                <h3 class="text-xl font-bold mb-3">Ayuda</h3>
+                <ul class="list-disc pl-5 space-y-1 text-slate-700 text-sm">
+                  <li>Responde con botones o con las teclas <span class="kbd">1</span> a <span class="kbd">4</span>. <span class="kbd">P</span> pausa.</li>
+                  <li>En <strong>Estudio</strong> no hay tiempo; si fallas, esa pregunta vuelve más tarde.</li>
+                  <li>Logros y álbum se guardan localmente.</li>
+                </ul>
+              </div>
+              <div class="bg-slate-50 p-4 flex justify-end gap-2">
+                <button id="closeHelp" type="button" class="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-semibold">OK</button>
+              </div>
+            </div>
+          </dialog>
+
+          <dialog id="leagueModal" class="rounded-2xl p-0 w-[min(95vw,46rem)] shadow backdrop:bg-black/40">
+            <div class="bg-white rounded-2xl overflow-hidden">
+              <div class="p-5 sm:p-6">
+                <div class="flex items-center justify-between">
+                  <h3 class="text-xl font-bold">🏆 Liga semanal</h3>
+                  <button id="closeLeague" type="button" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200">Cerrar</button>
+                </div>
+                <div class="grid sm:grid-cols-3 gap-4 mt-4">
+                  <div class="sm:col-span-2">
+                    <div class="flex items-center justify-between mb-2">
+                      <div class="font-semibold text-slate-600 text-sm">Semana actual: <span id="leagueWeek" class="font-bold text-slate-800">—</span></div>
+                      <div class="text-xs text-slate-500">Mejor puntuación por jugador</div>
+                    </div>
+                    <div id="leagueTable" class="overflow-x-auto"></div>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1" for="leagueName">Jugador actual</label>
+                    <input id="leagueName" class="w-full px-3 py-2 rounded-xl border bg-white mb-2" />
+                    <div class="flex gap-2">
+                      <button id="saveLeagueName" type="button" class="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold">Guardar</button>
+                      <button id="resetLeague" type="button" class="px-3 py-2 rounded-xl bg-rose-100 hover:bg-rose-200 text-rose-700 text-sm font-semibold">Borrar datos</button>
+                    </div>
+                    <p class="text-[11px] text-slate-500 mt-2">Datos locales (localStorage).</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </dialog>
+
+          <dialog id="statsModal" class="rounded-2xl p-0 w-[min(95vw,46rem)] shadow backdrop:bg-black/40">
+            <div class="bg-white rounded-2xl overflow-hidden">
+              <div class="p-5 sm:p-6">
+                <div class="flex items-center justify-between">
+                  <h3 class="text-xl font-bold">📊 Estadísticas</h3>
+                  <button id="closeStats" type="button" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200">Cerrar</button>
+                </div>
+                <div class="mt-4">
+                  <div class="flex gap-2 mb-3">
+                    <button data-tab="overview" type="button" class="tab-btn px-3 py-2 rounded-lg bg-slate-100 text-sm font-semibold active">Resumen</button>
+                    <button data-tab="mistakes" type="button" class="tab-btn px-3 py-2 rounded-lg bg-slate-100 text-sm font-semibold">Países más fallados</button>
+                    <button data-tab="times" type="button" class="tab-btn px-3 py-2 rounded-lg bg-slate-100 text-sm font-semibold">Tiempos</button>
+                    <button data-tab="achievements" type="button" class="tab-btn px-3 py-2 rounded-lg bg-slate-100 text-sm font-semibold">Logros</button>
+                  </div>
+                  <div id="statsContent" class="text-sm text-slate-700"></div>
+                </div>
+              </div>
+            </div>
+          </dialog>
+
+          <dialog id="dailyModal" class="rounded-2xl p-0 w-[min(95vw,40rem)] shadow backdrop:bg-black/40">
+            <div class="bg-white rounded-2xl overflow-hidden">
+              <div class="p-5 sm:p-6">
+                <div class="flex items-center justify-between">
+                  <h3 class="text-xl font-bold">🎯 Reto del día</h3>
+                  <button id="closeDaily" type="button" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200">Cerrar</button>
+                </div>
+                <div id="dailyQuestion" class="mt-4"></div>
+                <div id="dailyPrize" class="hidden mt-6 text-center">
+                  <div class="text-[56px] leading-none" id="dailyEmoji">⭐</div>
+                  <div class="mt-3 text-sm text-slate-700">¡Vuelve mañana para un nuevo reto!</div>
+                </div>
+              </div>
+            </div>
+          </dialog>
+
+          <!-- Álbum -->
+          <dialog id="albumModal" class="rounded-2xl p-0 w-[min(96vw,62rem)] shadow backdrop:bg-black/40">
+            <div class="bg-white rounded-2xl overflow-hidden">
+              <div class="p-5 sm:p-6">
+                <div class="flex items-center justify-between gap-3">
+                  <h3 class="text-xl font-bold">📔 Álbum de países aprendidos</h3>
+                  <button id="closeAlbum" type="button" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200">Cerrar</button>
+                </div>
+
+                <!-- Controles: regiones como chips + búsqueda -->
+                <div class="mt-4 flex flex-col sm:flex-row sm:items-center gap-3">
+                  <div id="albumRegionChips" class="flex-1 grid grid-cols-3 sm:flex sm:flex-wrap gap-2">
+                    <!-- Se dibuja desde app.js -->
+                  </div>
+                  <input id="albumSearch" class="w-full sm:w-80 px-3 py-2 rounded-xl border bg-white" placeholder="Buscar por país o capital..." />
+                </div>
+
+                <!-- Progreso por región -->
+                <div id="albumProgress" class="mt-4 rounded-2xl border bg-slate-50/60 p-3">
+                  <!-- Se renderiza desde app.js -->
+                </div>
+
+                <!-- Estantería de insignias -->
+                <div id="albumTrophies" class="mt-4 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3"></div>
+
+                <!-- Grid tipo Pokédex -->
+                <div id="albumGrid" class="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3"></div>
+
+                <div id="albumEmpty" class="mt-4 p-4 rounded-xl border bg-slate-50 text-sm text-slate-600 hidden">
+                  Aún no has desbloqueado nada. Cada acierto añade bandera o capital según el tipo de pregunta.
+                </div>
+              </div>
+            </div>
+          </dialog>
+          <!-- FIN Álbum -->
+
+          <!-- Logros (vitrina separada) -->
+          <dialog id="achModal" class="rounded-2xl p-0 w-[min(96vw,56rem)] shadow backdrop:bg-black/40">
+            <div class="bg-white rounded-2xl overflow-hidden">
+              <div class="p-5 sm:p-6">
+                <div class="flex items-center justify-between gap-3">
+                  <h3 class="text-xl font-bold">🏅 Vitrina de logros</h3>
+                  <button id="closeAch" type="button" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200">Cerrar</button>
+                </div>
+                <div id="achGrid" class="mt-4 grid sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+                <div id="achEmpty" class="hidden mt-4 p-4 rounded-xl border bg-slate-50 text-sm text-slate-600">Aún no has desbloqueado logros.</div>
+              </div>
+            </div>
+          </dialog>
+          <!-- FIN Logros -->
+
+        </div>
+
+        <script src="./app.js"></script>
+      </div>
+    </div>
+  </main>
+
+  <footer class="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6 text-center text-[11px] sm:text-xs text-slate-500">
+    Optimizado para móvil, tablet y escritorio. Añádelo a pantalla de inicio cuando lo subas a Internet.
+  </footer>
+
+  <!-- Fullscreen / Manifest -->
+  <script>
+    (function(){
+      const fs = document.documentElement;
+      const btnFs = document.getElementById('btnFullscreen');
+      if (btnFs) btnFs.addEventListener('click', async () => {
+        try { if (!document.fullscreenElement) await fs.requestFullscreen(); else await document.exitFullscreen(); } catch(e) {}
+      });
+    })();
+
+    (function(){
+      const manifest = {
+        name: "Diversión con el mundo",
+        short_name: "Mundo",
+        description: "Diversión con el mundo",
+        start_url: "./index.html",
+        scope: "./",
+        display: "standalone",
+        background_color: "#ffffff",
+        theme_color: "#0ea5e9",
+        icons: [
+          { src: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='512' height='512'><rect width='512' height='512' fill='%230ea5e9'/><text x='50%' y='56%' font-size='250' text-anchor='middle' fill='white'>🌐</text></svg>", sizes: "512x512", type: "image/svg+xml" },
+          { src: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='192' height='192'><rect width='192' height='192' fill='%230ea5e9'/><text x='50%' y='58%' font-size='110' text-anchor='middle' fill='white'>🌐</text></svg>", sizes: "192x192", type: "image/svg+xml" }
+        ]
+      };
+      const blob = new Blob([JSON.stringify(manifest)], {type: 'application/manifest+json'});
+      const url = URL.createObjectURL(blob);
+      document.getElementById('manifestLink').setAttribute('href', url);
+    })();
+  </script>
+  <!-- Panel de control interno (solo visible para el desarrollador) -->
+<div id="devControl" class="fixed bottom-4 right-4 bg-white/90 border shadow-lg rounded-xl p-4 text-sm max-w-xs z-[9999] hidden">
+  <h3 class="font-bold text-slate-800 mb-2">Control de progreso</h3>
+  <div class="grid gap-1 text-slate-700">
+    <label><input type="checkbox" id="chk_album" /> Álbum (chips, hero, cartas, estados, cascade/tilt)</label>
+    <label><input type="checkbox" id="chk_trophies" /> Trophy shelf + barras + toasts + confeti</label>
+    <label><input type="checkbox" id="chk_access" /> Accesibilidad, estabilidad y rendimiento</label>
+    <label><input type="checkbox" id="chk_pwa" /> PWA lista (manifest + SW + icons)</label>
+  </div>
+  <div class="mt-3 text-right">
+    <button id="btnCloseControl" class="text-xs px-3 py-1 border rounded-lg bg-slate-100 hover:bg-slate-200">Cerrar</button>
+  </div>
+</div>
+
+<!-- Botón flotante para mostrar el panel -->
+<button id="btnDevToggle" class="fixed bottom-4 right-4 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-full shadow-lg z-[9999] text-sm">🧩 Control</button>
+</body>
+</html>
+
