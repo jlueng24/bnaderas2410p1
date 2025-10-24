@@ -391,7 +391,9 @@ function disableAnswers(disabled){
 }
 
 // ===== Juego =====
-function applyThemePool(){ return currentTheme==='all' ? [...ALL] : ALL.filter(x=>x.region===currentTheme); }
+function applyThemePool(){
+  return currentTheme === 'all' ? [...ALL] : ALL.filter(x => x.region === currentTheme);
+}
 function pickOptions(correct, pool, n=4){
   const others = pool.filter(x=>x.code!==correct.code);
   shuffle(others);
@@ -447,15 +449,14 @@ function newGame(){
 }
 
 function renderQuestion(){
-    // Guardas anti-rotura: si no hay pregunta válida, aborta con mensaje limpio
-if (!q || !q.country) {
-  console.warn('No hay pregunta válida para el tema/dificultad actuales:', q);
-  // Muestra un aviso no bloqueante (ajusta a tu sistema de toasts si quieres)
-  const why = document.getElementById('whyBoxFlag') || document.getElementById('whyBoxCap');
-  if (why) why.textContent = 'No hay preguntas disponibles para esta combinación. Prueba otro tema o recarga.';
-  return;
-}
   const q = order[idx];
+  // Guardas anti-rotura: si no hay pregunta válida, aborta con mensaje limpio
+  if (!q || !q.item) {
+    console.warn('No hay pregunta válida para el tema/dificultad actuales:', q);
+    const why = document.getElementById('whyBoxFlag') || document.getElementById('whyBoxCap');
+    if (why) why.textContent = 'No hay preguntas disponibles para esta combinación. Prueba otro tema o recarga.';
+    return;
+  }
   ui.whyFlag.textContent = ''; ui.whyCap.textContent = '';
   qAccumulatedMs = 0;
 
@@ -959,7 +960,7 @@ function renderStats(tab='overview'){
   }
 
   if (tab==='mistakes'){
-    const arr = Object.entries(st.countries||{}).map(([code, v])=>({code, ...v, rate: (v.wrong||0)/Math.max(1,v.attempts||0)}))
+  const arr = Object.entries(st.countries||{}).map(([code, v]) => ({ code, ...v, rate: (v.wrong||0)/Math.max(1,(v.attempts||0)) }))
       .filter(x=>x.attempts>2).sort((a,b)=> b.rate - a.rate).slice(0,15);
     $('#statsContent').innerHTML = arr.length ? `
       <table class="w-full text-sm">
@@ -1028,8 +1029,6 @@ function renderAchievementsModal(){
         </div>
       </div>
     </div>`).join('');
-}
-
 // ===== Eventos =====
 ui.goToMode.addEventListener('click', ()=>{
   playerName = ui.playerInput.value.trim() || 'Anónimo';
@@ -1459,4 +1458,3 @@ function openAchievementDrawer(id){
     console.warn('uiFixes error:', e);
   }
 })();
-
