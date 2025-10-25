@@ -528,6 +528,7 @@ function newGame(){
 
 function renderQuestion(){
   const q = order[idx];
+    if (!q) { endGame(false); return; }
   // FIX: guard seguro (no usar q antes de definir y comprobar .item)
   if (!q || !q.item) {
     console.warn('No hay pregunta válida para la combinación actual:', q);
@@ -927,6 +928,7 @@ function advanceProgress(){
 function scheduleNext(){ if(nextTimer){ clearTimeout(nextTimer); } nextTimer = setTimeout(nextQuestion, 700); }
 function nextQuestion(){
   if (currentMode==='study'){
+      if (idx >= order.length || idx >= (MAX_Q || 10)) { endGame(false); return; }
     if (idx < order.length - 1){ idx++; }
     else if (studyQueue.length){ order.push(studyQueue.shift()); idx++; }
     else { endGame(false); return; }
