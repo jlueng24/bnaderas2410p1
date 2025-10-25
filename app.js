@@ -517,8 +517,8 @@ const withCapital = optionsPool.filter(x=>x.capitalES && x.capitalES.trim().leng
 if (currentMode==='study'){
   ui.qTotal.textContent = '/∞';
 } else if (currentMode==='survival'){
-  // Supervivencia: no preparamos 10; generamos bajo demanda
-  ui.qTotal.textContent = '';
+  // Supervivencia: sin tope; generamos bajo demanda
+  ui.qTotal.textContent = '/∞';
   order.push(makeOneQuestion()); // primera pregunta
 } else {
   ui.qTotal.textContent = '/'+MAX_Q;
@@ -562,7 +562,13 @@ function renderQuestion(){
   const q = order[idx];
   // Si aun así no hay pregunta válida, cerramos partida (evita quedarse en blanco)
   if (!q || !q.item) { endGame(false); return; }
- ui.whyFlag.textContent = ''; ui.whyCap.textContent = '';
+ {
+    console.warn('No hay pregunta válida para la combinación actual:', q);
+    const why = document.getElementById('whyBoxFlag') || document.getElementById('whyBoxCap');
+    if (why) why.textContent = 'No hay preguntas disponibles para esta combinación. Prueba otro tema o recarga.';
+    return;
+  }
+  ui.whyFlag.textContent = ''; ui.whyCap.textContent = '';
   qAccumulatedMs = 0;
 
   if (q.kind === 'flag'){
@@ -943,8 +949,8 @@ function handleTimeout(){
 
 function advanceProgress(){
   if (currentMode==='survival') {
-    const pct = Math.min(100, ((idx + 1) / MAX_Q) * 100);
-    ui.progressBar.style.width = pct + '%';
+    // En supervivencia no hay tope de 10: barra indeterminada
+    ui.progressBar.style.width = '0%';
   } else if (currentMode==='study'){
     ui.progressBar.style.width = '0%';
   } else {
