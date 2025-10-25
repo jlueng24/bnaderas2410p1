@@ -170,6 +170,15 @@ const ui = {
   finalMisses: $('#finalMisses'),
   achievementsList: $('#achievementsList'),
 
+    // Logros (modal nuevo)
+  achievementsModal: $('#achievementsModal'),
+  closeAchievements: $('#closeAchievements'),
+  achievementsGrid: $('#achievementsGrid'),
+  achievementsEmpty: $('#achievementsEmpty'),
+  achievementsBar: $('#achievementsBar'),
+  achievementsPct: $('#achievementsPct'),
+
+
   // Álbum
   albumModal: $('#albumModal'),
   btnAlbum: $('#btnAlbum'),
@@ -251,22 +260,78 @@ function updateGlobalStatsFromRun(){
   lsSet(LS.stats, st);
 }
 
-/* ========= Logros (datos base) ========= */
-const ACH = {
-  streak3:       {id:'streak3',       name:'Racha 3',           desc:'Consigue 3 aciertos seguidos',  tier:'bronce', icon:'🎯'},
-  streak5:       {id:'streak5',       name:'Racha 5',           desc:'Consigue 5 aciertos seguidos',  tier:'plata',  icon:'🎯'},
-  survival60:    {id:'survival60',    name:'Supervivencia 60s', desc:'Aguanta 60s en Supervivencia',  tier:'plata',  icon:'⏳'},
-  europePerfect: {id:'euPerfect',     name:'Europa sin fallos', desc:'Acaba Europa sin fallos',       tier:'oro',    icon:'🥇'},
-  study10:       {id:'study10',       name:'Estudio aplicado',  desc:'Resuelve 10 en Estudio',        tier:'bronce', icon:'📚'}
-};
+/* ========= Logros (catálogo + helpers) ========= */
+/* Catálogo base (puedes ampliarlo luego con los de tu Excel):
+   - primeras veces: primer acierto, primera bandera, primera capital, primer juego por modo
+   - rachas básicas: 3 y 5
+   - algunos de ejemplo que ya tenías
+*/
+const ACH_CATALOG = [
+  { id:'first_hit',      name:'¡Primer acierto!',             desc:'Tu primer acierto en el juego.',           icon:'🌟', cat:'Inicio' },
+  { id:'first_flag',     name:'Primera bandera',              desc:'Acertaste tu primera bandera.',            icon:'🏳️', cat:'Inicio' },
+  { id:'first_capital',  name:'Primera capital',              desc:'Acertaste tu primera capital.',            icon:'🏛️', cat:'Inicio' },
+  { id:'first_flags',    name:'Estreno: Banderas',            desc:'Jugaste por primera vez el modo Banderas.',icon:'🚩', cat:'Modos' },
+  { id:'first_capitals', name:'Estreno: Capitales',           desc:'Jugaste por primera vez el modo Capitales.',icon:'📍', cat:'Modos' },
+  { id:'first_mixed',    name:'Estreno: Mixto',               desc:'Jugaste por primera vez el modo Mixto.',   icon:'🔀', cat:'Modos' },
+  { id:'first_survival', name:'Estreno: Supervivencia',       desc:'Jugaste por primera vez Supervivencia.',   icon:'💀', cat:'Modos' },
+  { id:'first_study',    name:'Estreno: Estudio',             desc:'Jugaste por primera vez Estudio.',         icon:'📚', cat:'Modos' },
+  { id:'first_daily',    name:'Estreno: Reto del día',        desc:'Completaste tu primer Reto del día.',      icon:'🎯', cat:'Modos' },
+  { id:'streak3',        name:'Racha 3',                      desc:'3 aciertos seguidos.',                     icon:'🔥', cat:'Rachas' },
+  { id:'streak5',        name:'Racha 5',                      desc:'5 aciertos seguidos.',                     icon:'⚡', cat:'Rachas' },
+  // Ejemplos que ya tenías:
+  { id:'survival60',     name:'Supervivencia 60s',            desc:'Aguanta 60s en Supervivencia.',            icon:'⏳', cat:'Rachas' },
+  { id:'euPerfect',      name:'Europa sin fallos',            desc:'Acaba Europa sin fallos.',                 icon:'🥇', cat:'Retos' },
+  { id:'study10',        name:'Estudio aplicado',             desc:'Resuelve 10 en Estudio.',                  icon:'📘', cat:'Retos' }
+];
+const ACH_INDEX = Object.fromEntries(ACH_CATALOG.map(a=>[a.id,a]));
+
+// Guardado
 function getAchievements(){ return lsGet(LS.achievements, {}); }
-function unlockAchievement(key){
+function saveAchievements(obj){ lsSet(LS.achievements, obj); }
+function unlockAchievement(id){
+  if (!ACH_INDEX[id]) return; // evita ids desconocidos
   const all = getAchievements();
-  if (all[key]) return;
-  all[key] = { date: new Date().toISOString(), ...ACH[key] };
-  lsSet(LS.achievements, all);
+  if (all[id]) return;
+  all[id] = { id, date: new Date().toISOString() };
+  saveAchievements(all);
 }
-function listAchievements(){ return Object.values(getAchievements()); }
+
+// Pintado de la vitrina (modal)
+function renderAchievements(){
+  const unlocked = getAchievements();
+  // Mezcla: primero los desbloqueados, luego los bloqueados
+  const sorted = [...ACH_CATALOG].sort((a,b)=>{
+    const A = !!unlocked[a.id], B = !!unlocked[b.id];
+    return (A===B) ? a.name.localeCompare(b.name,'es') : (A? -1 : 1);
+  });
+
+  // Progreso
+  const total = ACH_CATALOG.length;
+  const have = Object.keys(unlocked).length;
+  const pct = total ? Math.round((have/total)*100) : 0;
+  if (ui.achievementsBar) ui.achievementsBar.style.width = pct+'%';
+  if (ui.achievementsPct) ui.achievementsPct.textContent = pct+'%';
+
+  // Grid
+  if (!ui.achievementsGrid) return;
+  ui.achievementsGrid.innerHTML = sorted.map(a=>{
+    const isOn = !!unlocked[a.id];
+    const date = isOn ? new Date(unlocked[a.id].date).toLocaleString('es-ES') : '';
+    const cls = isOn ? 'achv-card achv-unlocked' : 'achv-card achv-locked';
+    return `
+      <div class="${cls}" title="${isOn ? a.desc : 'Bloqueado'}">
+        <div class="achv-art text-2xl">${a.icon||'🏅'}</div>
+        <div class="achv-title">${a.name}</div>
+        <div class="achv-cat">${a.cat||''}</div>
+        ${isOn ? `<div class="text-[10px] text-slate-500 mt-1 text-center">${date}</div>`:''}
+      </div>`;
+  }).join('');
+
+  // Vacío
+  if (ui.achievementsEmpty){
+    ui.achievementsEmpty.classList.toggle('hidden', Object.keys(unlocked).length>0);
+  }
+}
 
 /* ========= Reto del día ========= */
 function dailySeedIndex(max){
@@ -305,6 +370,8 @@ function obfuscateText(txt){
 function renderDailyModal(){
   const challenges = lsGet(LS.challenge, {});
   const done = challenges[todayStr()];
+        // Logro: primer reto del día completado
+      unlockAchievement('first_daily');
   const container = $("#dailyQuestion");
   $("#dailyPrize").classList.add("hidden");
   $("#dailyEmoji").textContent = "⭐";
@@ -759,6 +826,9 @@ function renderAlbum(region=albumActiveRegion){
 
 /* ========= Selección / respuesta ========= */
 function onSelect(e){
+          // Logros "primeras veces"
+      unlockAchievement('first_hit');
+      unlockAchievement('first_flag');
   if (locked || paused) return;
   locked = true;
   if (currentMode!=='study') { qAccumulatedMs += (Date.now() - qActiveStartMs); stopTimer(); }
@@ -1077,6 +1147,12 @@ ui.startGame.addEventListener('click', ()=>{
   if (!currentTheme){ alert('Elige un tema'); return; }
   if (!currentLevel && currentMode!=='survival' && currentMode!=='study'){ alert('Elige dificultad'); return; }
   try{ audioCtx.resume(); }catch{}
+    // Logros "primer juego por modo"
+  if (currentMode==='flags')      unlockAchievement('first_flags');
+  else if (currentMode==='capitals')  unlockAchievement('first_capitals');
+  else if (currentMode==='mixed')     unlockAchievement('first_mixed');
+  else if (currentMode==='survival')  unlockAchievement('first_survival');
+  else if (currentMode==='study')     unlockAchievement('first_study');
   newGame();
 });
 
@@ -1145,6 +1221,14 @@ ui.albumSearch?.addEventListener('input', ()=> renderAlbum(albumActiveRegion));
 
 // Logros (botón header) — compat vitrina nueva / modal antiguo
 ui.btnAchievements?.addEventListener('click', ()=>{
+  if (ui.achievementsModal?.showModal){
+    renderAchievements();
+    ui.achievementsModal.showModal();
+  }
+});
+ui.closeAchievements?.addEventListener('click', ()=>{
+  ui.achievementsModal?.close?.();
+});
   const achModal   = document.getElementById('achModal');
   const achSection = document.getElementById('achievementsSection');
   if (achModal && typeof achModal.showModal === 'function') {
@@ -1155,8 +1239,7 @@ ui.btnAchievements?.addEventListener('click', ()=>{
     if (typeof renderAchievements === 'function') renderAchievements();
     const top = achSection.getBoundingClientRect().top + window.scrollY - 16;
     window.scrollTo({ top, behavior:'smooth' });
-  }
-});
+  };
 $('#closeAch')?.addEventListener('click', ()=> ui.achModal?.close?.());
 
 // Respuestas
@@ -1215,3 +1298,4 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setup, { once:true });
   else setup();
 })();
+
