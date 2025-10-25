@@ -562,13 +562,7 @@ function renderQuestion(){
   const q = order[idx];
   // Si aun así no hay pregunta válida, cerramos partida (evita quedarse en blanco)
   if (!q || !q.item) { endGame(false); return; }
- {
-    console.warn('No hay pregunta válida para la combinación actual:', q);
-    const why = document.getElementById('whyBoxFlag') || document.getElementById('whyBoxCap');
-    if (why) why.textContent = 'No hay preguntas disponibles para esta combinación. Prueba otro tema o recarga.';
-    return;
-  }
-  ui.whyFlag.textContent = ''; ui.whyCap.textContent = '';
+ ui.whyFlag.textContent = ''; ui.whyCap.textContent = '';
   qAccumulatedMs = 0;
 
   if (q.kind === 'flag'){
