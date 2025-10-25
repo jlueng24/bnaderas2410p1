@@ -483,19 +483,45 @@ function pickOptions(correct, pool, n=4){
 function modeLabel(m){
   return m==='flags'?'Banderas':m==='capitals'?'Capitales':m==='mixed'?'Mixto':m==='survival'?'Supervivencia':m==='study'?'Estudio':m;
 }
+function makeOneQuestion(){
+  const base = applyThemePool();
+  const withCapital = base.filter(x=>x.capitalES && x.capitalES.trim().length);
+
+  // Decide el tipo según el modo
+  if (currentMode==='flags') {
+    const item = base[randomInt(base.length)];
+    return { kind:'flag', item };
+  } else if (currentMode==='capitals') {
+    const pool = withCapital.length ? withCapital : base;
+    const item = pool[randomInt(pool.length)];
+    return { kind:'capital', item };
+  } else if (currentMode==='mixed' || currentMode==='survival') {
+    const useCap = withCapital.length && Math.random()<0.5;
+    const pool = useCap ? withCapital : base;
+    const item = pool[randomInt(pool.length)];
+    return { kind: useCap ? 'capital' : 'flag', item };
+  } else {
+    const item = base[randomInt(base.length)];
+    return { kind:'flag', item };
+  }
+}
 
 function newGame(){
   const base = applyThemePool();
   optionsPool = base.length ? base : [...ALL];
   shuffle(optionsPool);
 
-  order = [];
-  const withCapital = optionsPool.filter(x=>x.capitalES && x.capitalES.trim().length);
+order = [];
+const withCapital = optionsPool.filter(x=>x.capitalES && x.capitalES.trim().length);
 
-  if (currentMode==='study'){ ui.qTotal.textContent = '/∞'; }
-  else if (currentMode==='survival'){ ui.qTotal.textContent = ''; }
-  else { ui.qTotal.textContent = '/'+MAX_Q; }
-
+if (currentMode==='study'){
+  ui.qTotal.textContent = '/∞';
+} else if (currentMode==='survival'){
+  // Supervivencia: no preparamos 10; generamos bajo demanda
+  ui.qTotal.textContent = '';
+  order.push(makeOneQuestion()); // primera pregunta
+} else {
+  ui.qTotal.textContent = '/'+MAX_Q;
   const count = MAX_Q;
   for (let i=0; i<count; i++){
     if (currentMode === 'flags') {
@@ -508,6 +534,7 @@ function newGame(){
       order.push({ kind, item: baseK[i % baseK.length] });
     }
   }
+}
 
   idx = 0; score = 0; hits = 0; misses = 0; locked = false;
   timesMs = []; missMap = {}; streak = 0; studyQueue = [];
@@ -527,8 +554,13 @@ function newGame(){
 }
 
 function renderQuestion(){
+  // Supervivencia: si hemos llegado al final del array, generamos la siguiente
+  if (currentMode === 'survival' && idx >= order.length) {
+    order.push(makeOneQuestion());
+  }
+
   const q = order[idx];
-  // FIX: si no hay pregunta válida o falta el item, termina la partida
+  // Si aun así no hay pregunta válida, cerramos partida (evita quedarse en blanco)
   if (!q || !q.item) { endGame(false); return; }
  {
     console.warn('No hay pregunta válida para la combinación actual:', q);
@@ -927,14 +959,14 @@ function advanceProgress(){
 }
 function scheduleNext(){ if(nextTimer){ clearTimeout(nextTimer); } nextTimer = setTimeout(nextQuestion, 700); }
 function nextQuestion(){
-  // En supervivencia NO hay límite de preguntas: solo termina por fallo/tiempo
+  // SUPER VIVENCIA: sin límite de 10, solo termina por fallo/tiempo.
   if (currentMode === 'survival') {
-    idx++;               // avanzamos a la siguiente para que no repita
-    renderQuestion();    // sigue hasta fallar o agotar tiempo
+    idx++;                 // avanzamos índice
+    renderQuestion();      // generación bajo demanda ocurrirá en renderQuestion()
     return;
   }
 
-  // Resto de modos: cortar limpio al agotar preguntas / límite
+  // RESTO MODOS: al llegar al límite/fin del array, finalizamos
   if (idx >= order.length || idx >= (MAX_Q || 10)) { endGame(false); return; }
 
   if (currentMode === 'study'){
@@ -948,6 +980,7 @@ function nextQuestion(){
 
   if (idx < MAX_Q - 1){ idx++; renderQuestion(); } else { endGame(false); }
 }
+
 
 
 /* ========= Supervivencia ========= */
@@ -1214,6 +1247,39 @@ $('#btnLeague').addEventListener('click', ()=>{ renderLeague(); $("#leagueModal"
 $('#closeLeague').addEventListener('click', ()=> $("#leagueModal").close());
 $('#saveLeagueName').addEventListener('click', ()=>{ const n=$('#leagueName').value.trim(); if(n){ playerName=n; lsSet(LS.name, playerName); $('#hudPlayer').textContent=playerName; } });
 $('#resetLeague').addEventListener('click', ()=>{ if(confirm('¿Borrar ranking y estadísticas locales?')){ localStorage.removeItem(LS.scores); localStorage.removeItem(LS.stats); renderLeague(); } });
+// Stats (robusto) — pegar justo debajo de los handlers de "Liga"
+(function(){
+  const btn   = document.getElementById('btnStats');
+  const dlg   = document.getElementById('statsModal');
+  const close = document.getElementById('closeStats');
+
+  if (btn && dlg && typeof dlg.showModal === 'function') {
+    btn.addEventListener('click', ()=>{
+      setActiveTab('overview');
+      renderStats('overview');
+      dlg.showModal();
+    });
+  }
+  if (close && dlg && typeof dlg.close === 'function') {
+    close.addEventListener('click', ()=> dlg.close());
+  }
+
+  const tabs = dlg ? dlg.querySelectorAll('.tab-btn') : [];
+  tabs.forEach(t => t.addEventListener('click', ()=>{
+    const tab = t.dataset.tab;
+    setActiveTab(tab);
+    renderStats(tab);
+  }));
+})();
+
+function setActiveTab(tab){
+  const dlg = document.getElementById('statsModal');
+  if (!dlg) return;
+  dlg.querySelectorAll('.tab-btn').forEach(b=> b.classList.remove('active'));
+  const target = dlg.querySelector(`.tab-btn[data-tab="${tab}"]`);
+  if (target) target.classList.add('active');
+}
+
 
 // Stats (robusto)
 (function(){
