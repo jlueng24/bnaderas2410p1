@@ -528,11 +528,9 @@ function newGame(){
 
 function renderQuestion(){
   const q = order[idx];
-    // FIX: si no hay pregunta válida, termina la partida
-  if (!q) { endGame(false); return; }
-    if (!q) { endGame(false); return; }
-  // FIX: guard seguro (no usar q antes de definir y comprobar .item)
-  if (!q || !q.item) {
+  // FIX: si no hay pregunta válida o falta el item, termina la partida
+  if (!q || !q.item) { endGame(false); return; }
+ {
     console.warn('No hay pregunta válida para la combinación actual:', q);
     const why = document.getElementById('whyBoxFlag') || document.getElementById('whyBoxCap');
     if (why) why.textContent = 'No hay preguntas disponibles para esta combinación. Prueba otro tema o recarga.';
@@ -929,17 +927,28 @@ function advanceProgress(){
 }
 function scheduleNext(){ if(nextTimer){ clearTimeout(nextTimer); } nextTimer = setTimeout(nextQuestion, 700); }
 function nextQuestion(){
-    // FIX: cortar limpio al agotar preguntas / límite
+  // En supervivencia NO hay límite de preguntas: solo termina por fallo/tiempo
+  if (currentMode === 'survival') {
+    idx++;               // avanzamos a la siguiente para que no repita
+    renderQuestion();    // sigue hasta fallar o agotar tiempo
+    return;
+  }
+
+  // Resto de modos: cortar limpio al agotar preguntas / límite
   if (idx >= order.length || idx >= (MAX_Q || 10)) { endGame(false); return; }
-  if (currentMode==='study'){
-      if (idx >= order.length || idx >= (MAX_Q || 10)) { endGame(false); return; }
+
+  if (currentMode === 'study'){
+    if (idx >= order.length || idx >= (MAX_Q || 10)) { endGame(false); return; }
     if (idx < order.length - 1){ idx++; }
     else if (studyQueue.length){ order.push(studyQueue.shift()); idx++; }
     else { endGame(false); return; }
-    renderQuestion(); return;
+    renderQuestion();
+    return;
   }
+
   if (idx < MAX_Q - 1){ idx++; renderQuestion(); } else { endGame(false); }
 }
+
 
 /* ========= Supervivencia ========= */
 let survivalInterval = null;
@@ -1206,11 +1215,37 @@ $('#closeLeague').addEventListener('click', ()=> $("#leagueModal").close());
 $('#saveLeagueName').addEventListener('click', ()=>{ const n=$('#leagueName').value.trim(); if(n){ playerName=n; lsSet(LS.name, playerName); $('#hudPlayer').textContent=playerName; } });
 $('#resetLeague').addEventListener('click', ()=>{ if(confirm('¿Borrar ranking y estadísticas locales?')){ localStorage.removeItem(LS.scores); localStorage.removeItem(LS.stats); renderLeague(); } });
 
-// Stats
-$('#btnStats').addEventListener('click', ()=>{ renderStats('overview'); $("#statsModal").showModal(); setActiveTab('overview'); });
-$('#closeStats').addEventListener('click', ()=> $("#statsModal").close());
-$$("#statsModal .tab-btn").forEach(btn=> btn.addEventListener('click', ()=>{ setActiveTab(btn.dataset.tab); renderStats(btn.dataset.tab); }));
-function setActiveTab(tab){ $$("#statsModal .tab-btn").forEach(b=> b.classList.remove('active')); $(`#statsModal .tab-btn[data-tab="${tab}"]`).classList.add('active'); }
+// Stats (robusto)
+(function(){
+  const btn = document.getElementById('btnStats');
+  const dlg = document.getElementById('statsModal');
+  const close = document.getElementById('closeStats');
+
+  if (btn && dlg && typeof dlg.showModal === 'function') {
+    btn.addEventListener('click', ()=>{
+      setActiveTab('overview');
+      renderStats('overview');
+      dlg.showModal();
+    });
+  }
+  if (close && dlg && typeof dlg.close === 'function') {
+    close.addEventListener('click', ()=> dlg.close());
+  }
+
+  const tabs = dlg ? dlg.querySelectorAll('.tab-btn') : [];
+  tabs.forEach(t => t.addEventListener('click', ()=>{
+    const tab = t.dataset.tab;
+    setActiveTab(tab);
+    renderStats(tab);
+  }));
+})();
+function setActiveTab(tab){
+  const dlg = document.getElementById('statsModal');
+  if (!dlg) return;
+  dlg.querySelectorAll('.tab-btn').forEach(b=> b.classList.remove('active'));
+  const target = dlg.querySelector(`.tab-btn[data-tab="${tab}"]`);
+  if (target) target.classList.add('active');
+}
 
 // Reto del día
 $('#closeDaily').addEventListener('click', ()=> $("#dailyModal").close());
