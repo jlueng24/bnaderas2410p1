@@ -562,13 +562,7 @@ function renderQuestion(){
   const q = order[idx];
   // Si aun así no hay pregunta válida, cerramos partida (evita quedarse en blanco)
   if (!q || !q.item) { endGame(false); return; }
- {
-    console.warn('No hay pregunta válida para la combinación actual:', q);
-    const why = document.getElementById('whyBoxFlag') || document.getElementById('whyBoxCap');
-    if (why) why.textContent = 'No hay preguntas disponibles para esta combinación. Prueba otro tema o recarga.';
-    return;
-  }
-  ui.whyFlag.textContent = ''; ui.whyCap.textContent = '';
+ ui.whyFlag.textContent = ''; ui.whyCap.textContent = '';
   qAccumulatedMs = 0;
 
   if (q.kind === 'flag'){
@@ -949,7 +943,7 @@ function handleTimeout(){
 
 function advanceProgress(){
   if (currentMode==='survival') {
-    // En supervivencia no hay tope de 10: barra indeterminada
+    // Sin tope fijo: barra indeterminada
     ui.progressBar.style.width = '0%';
   } else if (currentMode==='study'){
     ui.progressBar.style.width = '0%';
@@ -1281,35 +1275,8 @@ function setActiveTab(tab){
 }
 
 
-// Stats (robusto)
-(function(){
-  const btn = document.getElementById('btnStats');
-  const dlg = document.getElementById('statsModal');
-  const close = document.getElementById('closeStats');
 
-  if (btn && dlg && typeof dlg.showModal === 'function') {
-    btn.addEventListener('click', ()=>{
-      setActiveTab('overview');
-      renderStats('overview');
-      dlg.showModal();
-    });
-  }
-  if (close && dlg && typeof dlg.close === 'function') {
-    close.addEventListener('click', ()=> dlg.close());
-  }
-
-  const tabs = dlg ? dlg.querySelectorAll('.tab-btn') : [];
-  tabs.forEach(t => t.addEventListener('click', ()=>{
-    const tab = t.dataset.tab;
-    setActiveTab(tab);
-    renderStats(tab);
-  }));
-})();
-function setActiveTab(tab){
-  const dlg = document.getElementById('statsModal');
-  if (!dlg) return;
-  dlg.querySelectorAll('.tab-btn').forEach(b=> b.classList.remove('active'));
-  const target = dlg.querySelector(`.tab-btn[data-tab="${tab}"]`);
+"]`);
   if (target) target.classList.add('active');
 }
 
