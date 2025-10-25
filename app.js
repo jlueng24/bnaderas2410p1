@@ -528,6 +528,8 @@ function newGame(){
 
 function renderQuestion(){
   const q = order[idx];
+    // FIX: si no hay pregunta válida, termina la partida
+  if (!q) { endGame(false); return; }
     if (!q) { endGame(false); return; }
   // FIX: guard seguro (no usar q antes de definir y comprobar .item)
   if (!q || !q.item) {
@@ -927,6 +929,8 @@ function advanceProgress(){
 }
 function scheduleNext(){ if(nextTimer){ clearTimeout(nextTimer); } nextTimer = setTimeout(nextQuestion, 700); }
 function nextQuestion(){
+    // FIX: cortar limpio al agotar preguntas / límite
+  if (idx >= order.length || idx >= (MAX_Q || 10)) { endGame(false); return; }
   if (currentMode==='study'){
       if (idx >= order.length || idx >= (MAX_Q || 10)) { endGame(false); return; }
     if (idx < order.length - 1){ idx++; }
@@ -1300,4 +1304,27 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setup, { once:true });
   else setup();
 })();
+/* ===== FAILSAFE: botón Estadísticas siempre abre su modal ===== */
+(function(){
+  try {
+    const btn = document.getElementById('btnStats');
+    const dlg = document.getElementById('statsModal');
+    if (btn && dlg && typeof dlg.showModal === 'function') {
+      btn.addEventListener('click', () => {
+        // Pestaña por defecto
+        const firstTab = dlg.querySelector('.tab-btn[data-tab="overview"]');
+        if (firstTab) firstTab.classList.add('active');
+        if (typeof renderStats === 'function') renderStats('overview');
+        dlg.showModal();
+      });
+    }
+    const close = document.getElementById('closeStats');
+    if (close && dlg && typeof dlg.close === 'function') {
+      close.addEventListener('click', () => dlg.close());
+    }
+  } catch(e) {
+    console.warn('failsafe stats:', e);
+  }
+})();
+
 
