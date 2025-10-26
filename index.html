@@ -381,32 +381,48 @@
           </dialog>
           <!-- FIN Álbum -->
 
-<!-- ===== LOGROS (MODAL) ===== -->
-<dialog id="achievementsModal" class="rounded-2xl p-0 w-[min(96vw,56rem)] shadow backdrop:bg-black/40">
-  <div class="bg-white rounded-2xl overflow-hidden">
-    <div class="p-5 sm:p-6">
-      <div class="flex items-center justify-between gap-3">
-        <h3 class="text-xl font-bold">🏅 Vitrina de logros</h3>
-        <button id="closeAchievements" type="button" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200">Cerrar</button>
-      </div>
-      <!-- Barra resumen -->
-      <div class="rounded-xl border bg-white p-3 mt-3 flex items-center gap-3">
-        <div class="text-3xl">🏛️</div>
-        <div class="flex-1">
-          <div class="font-semibold">Progreso de logros</div>
-          <div class="h-2 bg-slate-100 rounded overflow-hidden">
-            <div id="achievementsBar" class="h-2 bg-emerald-500" style="width:0%"></div>
-          </div>
-        </div>
-        <div id="achievementsPct" class="w-14 text-right font-bold">0%</div>
-      </div>
-      <!-- Grid de logros -->
-      <div id="achievementsGrid" class="mt-4 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3"></div>
-      <div id="achievementsEmpty" class="hidden mt-4 p-4 rounded-xl border bg-slate-50 text-sm text-slate-600">Aún no has desbloqueado logros.</div>
-    </div>
-  </div>
-</dialog>
-<!-- FIN Logros -->
+          <!-- ===== LOGROS / VITRINA ===== -->
+          <section id="achievementsSection" class="hidden">
+            <div class="max-w-6xl mx-auto p-4">
+              <header class="flex items-center justify-between mb-3">
+                <h2 class="text-xl font-bold">Sala de logros</h2>
+                <div class="text-sm text-slate-600">Tu historia en medallas</div>
+              </header>
+
+              <!-- Barra resumen -->
+              <div class="rounded-xl border bg-white p-3 mb-3 flex items-center gap-3">
+                <div class="text-3xl">🏛️</div>
+                <div class="flex-1">
+                  <div class="font-semibold">Progreso de logros</div>
+                  <div class="h-2 bg-slate-100 rounded overflow-hidden">
+                    <div id="achievementsBar" class="h-2 bg-emerald-500" style="width:0%"></div>
+                  </div>
+                </div>
+                <div id="achievementsPct" class="w-14 text-right font-bold">0%</div>
+              </div>
+
+              <!-- Vitrina -->
+              <div id="achievementsGrid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3"></div>
+            </div>
+          </section>
+
+          <!-- Panel lateral detalle logro -->
+          <aside id="achievementDrawer" class="fixed top-0 right-0 w-full sm:w-[380px] h-full bg-white border-l shadow-2xl translate-x-full transition-transform duration-300 z-[60]">
+            <div class="p-4 flex items-center justify-between border-b">
+              <div class="font-bold">Detalle del logro</div>
+              <button id="closeAchievementDrawer" class="text-slate-600 hover:text-slate-900">✕</button>
+            </div>
+            <div class="p-5 space-y-3">
+              <div id="achvArt" class="w-40 h-40 mx-auto rounded-full border grid place-items-center text-5xl bg-slate-50">⭐</div>
+              <div class="text-center">
+                <div id="achvName" class="text-lg font-bold">Nombre del logro</div>
+                <div id="achvCat" class="text-xs text-slate-500">Categoría</div>
+              </div>
+              <p id="achvDesc" class="text-sm text-slate-700">Descripción del logro…</p>
+              <div id="achvDate" class="text-xs text-slate-500">—</div>
+            </div>
+          </aside>
+          <!-- FIN Logros -->
 
         </div>
 
